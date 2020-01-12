@@ -8,10 +8,14 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import com.gdx.dungeon.screens.Play;
 import com.gdx.dungeon.sprites.Hero;
+import com.gdx.dungeon.sprites.Player;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
@@ -25,81 +29,20 @@ public class DungeonClient extends Game {
 	private final float UPDATE_TIME = 1/60f;
 	float timer = 0;
 	private final String URI = "http://localhost:8080";
-	SpriteBatch batch;
-	private Socket socket;
+	public Socket socket;
 	String id;
-	Hero player;
+	public Hero player;
 	Texture playerHero;
 	Texture anotherHero;
-	HashMap<String, Hero> anotherPlayers;
-	OrthographicCamera camera;
-	ExtendViewport viewport;
-
-	@Override
-	public void resize(int width, int height) {
-		viewport.update(width, height, true);
-		batch.setProjectionMatrix(camera.combined);
-	}
+	public HashMap<String, Hero> anotherPlayers = new HashMap<String, Hero>();
 
 	@Override
 	public void create() {
-		camera = new OrthographicCamera();
-		viewport = new ExtendViewport(200, 150, camera);
-		batch = new SpriteBatch();
+		setScreen(new Play(this));
 		playerHero = new Texture("heroes/knight/knight_idle_anim_f0.png");
 		anotherHero = new Texture("heroes/knight/knight_idle_anim_f0.png");
-		anotherPlayers = new HashMap<String, Hero>();
 		connectSocket();
 		configSocketEvents();
-	}
-
-	public void handleInput(float dt) {
-		if (player != null) {
-			if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-				player.setPosition(player.getX() + (-200 * dt), player.getY());
-			}
-			if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-				player.setPosition(player.getX() + (200 * dt), player.getY());
-			}
-			if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
-				player.setPosition(player.getX(), player.getY() + (200 * dt));
-			}
-			if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
-				player.setPosition(player.getX(), player.getY() + (-200 * dt));
-			}
-		}
-	}
-
-	public void updateServer(float dt) {
-		timer += dt;
-		if (timer >= UPDATE_TIME && player != null && player.hasMoved()) {
-			JSONObject data = new JSONObject();
-			try {
-				data.put("x", player.getX());
-				data.put("y", player.getY());
-				socket.emit("playerMoved", data);
-			} catch (JSONException e) {
-				Gdx.app.log("SOCKET.IO", "Error sending update data");
-			}
-		}
-	}
-
-	@Override
-	public void render () {
-		handleInput(Gdx.graphics.getDeltaTime());
-		updateServer(Gdx.graphics.getDeltaTime());
-
-		Gdx.gl.glClearColor(0, 0, 0, 1);
-		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-
-		batch.begin();
-		if (player != null) {
-			player.draw(batch);
-		}
-		for (HashMap.Entry<String, Hero> entry : anotherPlayers.entrySet()) {
-			 entry.getValue().draw(batch);
-		}
-		batch.end();
 	}
 
 	public void connectSocket() {
@@ -185,11 +128,12 @@ public class DungeonClient extends Game {
 			}
 		});
 	}
-	
+
+	/*
 	@Override
 	public void dispose () {
 		super.dispose();
 		playerHero.dispose();
 		anotherHero.dispose();
-	}
+	} */
 }

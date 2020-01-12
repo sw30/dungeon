@@ -21,4 +21,6 @@ public class Hero extends Sprite {
 		}
 		return false;
 	}
+
+
 }
