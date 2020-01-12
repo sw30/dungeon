@@ -4,10 +4,12 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Json;
+import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.gdx.dungeon.sprites.Hero;
 import io.socket.client.IO;
 import io.socket.client.Socket;
@@ -29,9 +31,19 @@ public class DungeonClient extends ApplicationAdapter {
 	Texture playerHero;
 	Texture anotherHero;
 	HashMap<String, Hero> anotherPlayers;
-	
+	OrthographicCamera camera;
+	ExtendViewport viewport;
+
 	@Override
-	public void create () {
+	public void resize(int width, int height) {
+		viewport.update(width, height, true);
+		batch.setProjectionMatrix(camera.combined);
+	}
+
+	@Override
+	public void create() {
+		camera = new OrthographicCamera();
+		viewport = new ExtendViewport(200, 150, camera);
 		batch = new SpriteBatch();
 		playerHero = new Texture("heroes/knight/knight_idle_anim_f0.png");
 		anotherHero = new Texture("heroes/knight/knight_idle_anim_f0.png");
@@ -175,7 +187,7 @@ public class DungeonClient extends ApplicationAdapter {
 	
 	@Override
 	public void dispose () {
-		super .dispose();
+		super.dispose();
 		playerHero.dispose();
 		anotherHero.dispose();
 	}
