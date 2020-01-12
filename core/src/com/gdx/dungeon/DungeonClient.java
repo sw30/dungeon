@@ -1,6 +1,7 @@
 package com.gdx.dungeon;
 
 import com.badlogic.gdx.ApplicationAdapter;
+import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.GL20;
@@ -20,7 +21,7 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 
-public class DungeonClient extends ApplicationAdapter {
+public class DungeonClient extends Game {
 	private final float UPDATE_TIME = 1/60f;
 	float timer = 0;
 	private final String URI = "http://localhost:8080";
@@ -140,7 +141,7 @@ public class DungeonClient extends ApplicationAdapter {
 					Gdx.app.log("SocketIO", "Error getting new player ID");
 				}
 			}
-		}).on("playerDisconnect", new Emitter.Listener() {
+		}).on("playerDisconnected", new Emitter.Listener() {
 			@Override
 			public void call(Object... args) {
 				JSONObject data = (JSONObject) args[0];
