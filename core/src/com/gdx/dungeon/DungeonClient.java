@@ -19,9 +19,11 @@ import org.json.JSONObject;
 import java.util.HashMap;
 
 public class DungeonClient extends ApplicationAdapter {
+	private final float UPDATE_TIME = 1/60f;
+	float timer = 0;
+	private final String URI = "http://localhost:8080";
 	SpriteBatch batch;
 	private Socket socket;
-	private String URI = "http://localhost:8080";
 	String id;
 	Hero player;
 	Texture playerHero;
@@ -42,17 +44,41 @@ public class DungeonClient extends ApplicationAdapter {
 		if (player != null) {
 			if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
 				player.setPosition(player.getX() + (-200 * dt), player.getY());
-			} else if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-				player.setPosition(player.getX() + ( 200 * dt), player.getY());
+			}
+			if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+				player.setPosition(player.getX() + (200 * dt), player.getY());
+			}
+			if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
+				player.setPosition(player.getX(), player.getY() + (200 * dt));
+			}
+			if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
+				player.setPosition(player.getX(), player.getY() + (-200 * dt));
+			}
+		}
+	}
+
+	public void updateServer(float dt) {
+		timer += dt;
+		if (timer >= UPDATE_TIME && player != null && player.hasMoved()) {
+			JSONObject data = new JSONObject();
+			try {
+				data.put("x", player.getX());
+				data.put("y", player.getY());
+				socket.emit("playerMoved", data);
+			} catch (JSONException e) {
+				Gdx.app.log("SOCKET.IO", "Error sending update data");
 			}
 		}
 	}
 
 	@Override
 	public void render () {
-		Gdx.gl.glClearColor(0, 0, 1, 1);
-		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 		handleInput(Gdx.graphics.getDeltaTime());
+		updateServer(Gdx.graphics.getDeltaTime());
+
+		Gdx.gl.glClearColor(0, 0, 0, 1);
+		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
 		batch.begin();
 		if (player != null) {
 			player.draw(batch);
@@ -95,9 +121,9 @@ public class DungeonClient extends ApplicationAdapter {
 			public void call(Object... args) {
 				JSONObject data = (JSONObject) args[0];
 				try {
-					id = data.getString("id");
-					Gdx.app.log("SocketIO", "New Player connected: " + id);
-					anotherPlayers.put(id, new Hero(anotherHero));
+					String playerId = data.getString("id");
+					Gdx.app.log("SocketIO", "New Player connected: " + playerId);
+					anotherPlayers.put(playerId, new Hero(anotherHero));
 				} catch (JSONException e) {
 					Gdx.app.log("SocketIO", "Error getting new player ID");
 				}
@@ -128,6 +154,20 @@ public class DungeonClient extends ApplicationAdapter {
 					}
 				} catch (JSONException e) {
 					e.printStackTrace();
+				}
+			}
+		}).on("playerMoved", new Emitter.Listener() {
+			@Override
+			public void call(Object... args) {
+				JSONObject data = (JSONObject) args[0];
+				try {
+					String playerId = data.getString("id");
+					Double x = data.getDouble("x");
+					Double y = data.getDouble("y");
+					if (anotherPlayers.get(playerId) != null)
+						anotherPlayers.get(playerId).setPosition(x.floatValue(), y.floatValue());
+				} catch (JSONException e) {
+					Gdx.app.log("SocketIO", "Error getting new player ID");
 				}
 			}
 		});
