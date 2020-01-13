@@ -4,15 +4,15 @@ import java.util.*;
 
 
 class PlayerData {
-	public int x;
-	public int y;
+	public double x;
+	public double y;
 	public String socketID;
 	public Socket socket;
 	public DataOutputStream clientOutput;
 	public DataInputStream clientInput;
 
 
-	public PlayerData(int x, int y, String socketID, Socket socket) throws IOException {
+	public PlayerData(double x, double y, String socketID, Socket socket) throws IOException {
 		this.x = x;
 		this.y = y;
 		this.socketID = socketID;
@@ -56,7 +56,7 @@ public class Server extends Thread{
 				}
 				PlayerData newPlayer = new PlayerData(0, 0, Integer.toString(ID), socket);
 				players.add(newPlayer);
-				System.out.println("Player " + Integer.toString(ID) + " connected on port " + socket.toString());
+				System.out.println("Player " + Integer.toString(ID));
 				ID++;
 				ClientHandler newHandler = new ClientHandler(newPlayer, this);
 				newHandler.start();
@@ -107,24 +107,33 @@ class ClientHandler extends Thread {
 		while (true) {
 			try {
 				String command = player.clientInput.readUTF();
-				if (command.startsWith("PLAYERMOVED")) {
+				System.out.println(command);
+				if (command.startsWith("CONNECT")) {
+					String id = player.socketID;
+					String x = Double.toString(player.x);
+					String y = Double.toString(player.y);
+					player.clientOutput.writeUTF("CREATED " + id + " " + x + " " + y);
+				} else if (command.startsWith("PLAYERMOVED")) {
 					String x = command.split(" ")[1];
 					String y = command.split(" ")[2];
-					player.x = Integer.parseInt(x);
-					player.y = Integer.parseInt(y);
+					player.x = Double.parseDouble(x);
+					player.y = Double.parseDouble(y);
 				} else if (command.startsWith("DISCONNECT")) {
 					System.out.println("Player " + player.socketID + " has disconnected");
 					//String username = command.split(" ")[1];
+					break;		//decomment if other players will be handled too
 				} else if (command.startsWith("LIST")) {
 					//clientOutput.writeUTF(Long.toString(fileCSV.length()));
 				} else if (command.startsWith("UPDATE")) {
 					for (PlayerData enemy : server.players) {
-						player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Integer.toString(enemy.x) + " " + Integer.toString(enemy.y));
+						player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
 					}
 				}
 			} catch (Exception e) {
-				e.printStackTrace();
-			}
+				server.players.remove(player);
+				System.out.println("Player " + player.socketID + " has disconnected");
+				break;
+			} 
 		}
 	}
 	

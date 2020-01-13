@@ -6,11 +6,12 @@ import com.badlogic.gdx.math.Vector2;
 
 public class Hero extends Sprite {
 
-	Vector2 previousPosition;
+	public Vector2 previousPosition;
 
 	public Hero(Texture texture) {
 		super(texture);
 		previousPosition = new Vector2(getX(), getY());
+		this.setScale(2.35f);
 	}
 
 	public boolean hasMoved() {
@@ -21,6 +22,7 @@ public class Hero extends Sprite {
 		}
 		return false;
 	}
+
 
 
 }

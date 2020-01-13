@@ -5,7 +5,6 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
@@ -14,10 +13,6 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.gdx.dungeon.DungeonClient;
 import com.gdx.dungeon.sprites.Hero;
-import com.gdx.dungeon.sprites.Player;
-import io.socket.client.Socket;
-import io.socket.emitter.Emitter;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -43,8 +38,10 @@ public class Play implements Screen {
 	public void show() {
 		TmxMapLoader loader = new TmxMapLoader();
 		map = loader.load("maps/map1.tmx");
-		renderer = new OrthogonalTiledMapRenderer(map);
+		renderer = new OrthogonalTiledMapRenderer(map, 2.35f);
 		camera = new OrthographicCamera();
+		float x = 305, y = 230;
+		camera.position.set(new Vector2(x, y), 0);
 	}
 
 	@Override
@@ -53,7 +50,6 @@ public class Play implements Screen {
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 		handleInput(Gdx.graphics.getDeltaTime());
 		updateServer(Gdx.graphics.getDeltaTime());
-
 		renderer.setView(camera);
 		renderer.render();
 		batch.begin();
@@ -114,14 +110,10 @@ public class Play implements Screen {
 
 	public void updateServer(float dt) {
 		timer += dt;
-		if (timer >= UPDATE_TIME && client.player != null && client.player.hasMoved()) {
-			JSONObject data = new JSONObject();
+		if (timer >= UPDATE_TIME && client.player != null) {
 			try {
-				data.put("x", client.player.getX());
-				data.put("y", client.player.getY());
-				client.socket.emit("playerMoved", data);
-			} catch (JSONException e) {
-				Gdx.app.log("SOCKET.IO", "Error sending update data");
+				client.dataOutput.writeUTF("PLAYERMOVED " + client.player.getX() + " " + client.player.getY());
+				client.dataOutput.writeUTF("UPDATE");
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
