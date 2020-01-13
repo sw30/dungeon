@@ -54,7 +54,7 @@ public class Server extends Thread{
 				synchronized(serverSock) {
 					socket = serverSock.accept();
 				}
-				PlayerData newPlayer = new PlayerData(0, 0, Integer.toString(ID), socket);
+				PlayerData newPlayer = new PlayerData(100, 100, Integer.toString(ID), socket);
 				players.add(newPlayer);
 				System.out.println("Player " + Integer.toString(ID));
 				ID++;
@@ -94,6 +94,10 @@ public class Server extends Thread{
 class ClientHandler extends Thread {
 	private Server server;
 	private PlayerData player;
+	double wallLeftX = 29.918842;
+	double wallUpY = 312.8834;
+	double wallRightX = 583.09235;
+	double wallDownY = 36.297974;
 
 
 	ClientHandler(PlayerData player, Server server) throws IOException {
@@ -101,6 +105,21 @@ class ClientHandler extends Thread {
 		this.server = server;
 	}
 
+	double validateX(double x) {
+		if (x < wallLeftX)
+			return wallLeftX;
+		else if (x > wallRightX)
+			return wallRightX;
+		return x;
+	}
+
+	double validateY(double y) {
+		if (y < wallDownY)
+			return wallDownY;
+		else if (y > wallUpY)
+			return wallUpY;
+		return y;
+	}
 
 	@Override
 	public void run()  {
@@ -116,8 +135,8 @@ class ClientHandler extends Thread {
 				} else if (command.startsWith("PLAYERMOVED")) {
 					String x = command.split(" ")[1];
 					String y = command.split(" ")[2];
-					player.x = Double.parseDouble(x);
-					player.y = Double.parseDouble(y);
+					player.x = validateX(Double.parseDouble(x));
+					player.y = validateY(Double.parseDouble(y));
 				} else if (command.startsWith("DISCONNECT")) {
 					System.out.println("Player " + player.socketID + " has disconnected");
 					//String username = command.split(" ")[1];
