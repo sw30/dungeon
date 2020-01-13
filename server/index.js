@@ -13,14 +13,15 @@ io.on('connection', function(socket) {
 	socket.emit('getPlayers', players);
 	socket.broadcast.emit('newPlayer', { id: socket.id });
 
+
 	socket.on('playerMoved', function(data) {
         data.id = socket.id;
         socket.broadcast.emit('playerMoved', data);
 
         console.log("playerMoved: " +
                 "ID: " + data.id +
-                "X: " + data.x +
-                "Y: " + data.y);
+                " X: " + data.x +
+                " Y: " + data.y);
 
         for (var i = 0; i < players.length; ++i) {
             if (players[i].id == data.id) {
@@ -39,7 +40,8 @@ io.on('connection', function(socket) {
 			}
 		}
 	});
-	players.push(new player(socket.id, 0, 0));
+    players.push(new player(socket.id, 326, 312));
+
 });
 
 function player(id, x, y) {
