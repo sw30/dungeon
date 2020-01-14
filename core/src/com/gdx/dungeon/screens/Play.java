@@ -84,15 +84,17 @@ public class Play implements Screen {
 			unhideMap();
 			if (client.player != null) {
 				//client.player.draw(batch);
-				batch.draw(client.player.frames.get(client.player.frame), client.player.getX(), client.player.getY());
+				//batch.draw(client.player.frames.get(client.player.frame), client.player.getX(), client.player.getY());
 				//client.player.update(Gdx.graphics.getDeltaTime());
+				client.player.draw(batch);
 			}
 			font.draw(batch, "Health: " + client.player.health, 50, 375);
 			font.draw(batch, "Level: " + client.player.level, 50, 400);
 			for (HashMap.Entry<String, Hero> entry : client.anotherPlayers.entrySet()) {
 				//entry.getValue().draw(batch);
-				batch.draw(entry.getValue().frames.get(entry.getValue().frame), entry.getValue().getX(), entry.getValue().getY());
+				//batch.draw(entry.getValue().frames.get(entry.getValue().frame), entry.getValue().getX(), entry.getValue().getY());
 				//entry.getValue().update(Gdx.graphics.getDeltaTime());
+				entry.getValue().draw(batch);
 			}
 		} else {
 			hideMap();

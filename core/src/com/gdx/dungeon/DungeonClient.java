@@ -34,8 +34,8 @@ public class DungeonClient extends Game {
 		connectSocket();
 		play = new Play(this);
 		setScreen(play);
-		playerHero = new Texture("heroes/knight/knight_run_spritesheet.png");
-		anotherHero = new Texture("heroes/knight/knight_run_spritesheet.png");
+		playerHero = new Texture("heroes/knight/knight_idle_spritesheet.png");
+		anotherHero = new Texture("heroes/knight/knight_idle_spritesheet_green.png");
 		serverListener = new ServerListener(dataInput, dataOutput, this);
 		serverListener.start();
 	}
