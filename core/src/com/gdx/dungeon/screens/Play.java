@@ -5,6 +5,8 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
@@ -13,8 +15,6 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.gdx.dungeon.DungeonClient;
 import com.gdx.dungeon.sprites.Hero;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.HashMap;
 
@@ -26,12 +26,17 @@ public class Play implements Screen {
 	ExtendViewport viewport;
 	DungeonClient client;
 	SpriteBatch batch;
+	BitmapFont font;
 	private final float UPDATE_TIME = 1/60f;
 	float timer = 0;
 
 	public Play(DungeonClient info) {
 		client = info;
 		batch = new SpriteBatch();
+		font = new BitmapFont();
+		font.getData().setScale(1);
+		font.getRegion().getTexture().setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+
 	}
 
 	@Override
@@ -56,6 +61,9 @@ public class Play implements Screen {
 		if (client.player != null) {
 			client.player.draw(batch);
 		}
+		font.draw(batch, "Health: " + client.player.health, 50, 375);
+		font.draw(batch, "Level: " + client.player.level, 50, 400);
+		font.draw(batch, "Wyszukiwanie drugiego gracza...", 200, 200);
 		for (HashMap.Entry<String, Hero> entry : client.anotherPlayers.entrySet()) {
 			entry.getValue().draw(batch);
 		}
@@ -93,16 +101,20 @@ public class Play implements Screen {
 	public void handleInput(float dt) {
 		if (client.player != null) {
 			if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-				client.player.setPosition(client.player.getX() + (-200 * dt), client.player.getY());
+				//client.player.setPosition(client.player.getX() + (-200 * dt), client.player.getY());
+				client.posX = client.posX + (-200 * dt);
 			}
 			if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-				client.player.setPosition(client.player.getX() + (200 * dt), client.player.getY());
+				//client.player.setPosition(client.player.getX() + (200 * dt), client.player.getY());
+				client.posX = client.posX + (200 * dt);
 			}
 			if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
-				client.player.setPosition(client.player.getX(), client.player.getY() + (200 * dt));
+				//client.player.setPosition(client.player.getX(), client.player.getY() + (200 * dt));
+				client.posY = client.posY + (200 * dt);
 			}
 			if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
-				client.player.setPosition(client.player.getX(), client.player.getY() + (-200 * dt));
+				//client.player.setPosition(client.player.getX(), client.player.getY() + (-200 * dt));
+				client.posY = client.posY + (-200 * dt);
 			}
 		}
 	}
@@ -112,10 +124,11 @@ public class Play implements Screen {
 		timer += dt;
 		if (timer >= UPDATE_TIME && client.player != null) {
 			try {
-				client.dataOutput.writeUTF("PLAYERMOVED " + client.player.getX() + " " + client.player.getY());
+				client.dataOutput.writeUTF("PLAYERMOVED " + client.posX + " " + client.posY);
 				client.dataOutput.writeUTF("UPDATE");
 			} catch (Exception e) {
 				e.printStackTrace();
+				System.exit(1);
 			}
 		}
 	}

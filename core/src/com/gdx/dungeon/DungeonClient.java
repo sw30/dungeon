@@ -21,7 +21,7 @@ public class DungeonClient extends Game {
 	private static final int PORT = 8080;
 	private static final String HOST = "localhost";
 	public Socket socket;
-	String id;
+	String id = null;
 	public Hero player;
 	Texture playerHero;
 	Texture anotherHero;
@@ -30,12 +30,16 @@ public class DungeonClient extends Game {
 	public DataInputStream dataInput;
 	public DataOutputStream dataOutput;
 	ServerListener serverListener;
+	Play play;
+	public double posX;
+	public double posY;
 
 
 	@Override
 	public void create() {
 		connectSocket();
-		setScreen(new Play(this));
+		play = new Play(this);
+		setScreen(play);
 		playerHero = new Texture("heroes/knight/knight_idle_anim_f0.png");
 		anotherHero = new Texture("heroes/knight/knight_idle_anim_f0.png");
 		//configSocketEvents();
@@ -55,84 +59,6 @@ public class DungeonClient extends Game {
 			System.exit(1);
 		}
 	}
-
-
-
-	/*public void configSocketEvents() {
-		socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
-			@Override
-			public void call(Object... args) {
-				Gdx.app.log("SocketIO", "Connected");
-				player = new Hero(playerHero);
-			}
-		}).on("socketID", new Emitter.Listener() {
-			@Override
-			public void call(Object... args) {
-				JSONObject data = (JSONObject) args[0];
-				try {
-					String id = data.getString("id");
-					Gdx.app.log("SocketIO", "My ID: " + id);
-				} catch (JSONException e) {
-					Gdx.app.log("SocketIO", "Error getting ID");
-				}
-			}
-		}).on("newPlayer", new Emitter.Listener() {
-			@Override
-			public void call(Object... args) {
-				JSONObject data = (JSONObject) args[0];
-				try {
-					String playerId = data.getString("id");
-					Gdx.app.log("SocketIO", "New Player connected: " + playerId);
-					Hero hero = new Hero(anotherHero);
-					anotherPlayers.put(playerId, hero);
-				} catch (JSONException e) {
-					Gdx.app.log("SocketIO", "Error getting new player ID");
-				}
-			}
-		}).on("playerDisconnected", new Emitter.Listener() {
-			@Override
-			public void call(Object... args) {
-				JSONObject data = (JSONObject) args[0];
-				try {
-					id = data.getString("id");
-					anotherPlayers.remove(id);
-				} catch (JSONException e) {
-					Gdx.app.log("SocketIO", "Error getting new player ID");
-				}
-			}
-		}).on("getPlayers", new Emitter.Listener() {
-			@Override
-			public void call(Object... args) {
-				JSONArray objects = (JSONArray) args[0];
-				try {
-					for (int i = 0; i < objects.length(); ++i) {
-						Hero differentPlayer = new Hero(anotherHero);
-						Vector2 position = new Vector2();
-						position.x = ((Double) objects.getJSONObject(i).getDouble("x")).floatValue();
-						position.y = ((Double) objects.getJSONObject(i).getDouble("y")).floatValue();
-						differentPlayer.setPosition(position.x, position.y);
-						anotherPlayers.put(objects.getJSONObject(i).getString("id"), differentPlayer);
-					}
-				} catch (JSONException e) {
-					e.printStackTrace();
-				}
-			}
-		}).on("playerMoved", new Emitter.Listener() {
-			@Override
-			public void call(Object... args) {
-				JSONObject data = (JSONObject) args[0];
-				try {
-					String playerId = data.getString("id");
-					Double x = data.getDouble("x");
-					Double y = data.getDouble("y");
-					if (anotherPlayers.get(playerId) != null)
-						anotherPlayers.get(playerId).setPosition(x.floatValue(), y.floatValue());
-				} catch (JSONException e) {
-					Gdx.app.log("SocketIO", "Error getting new player ID");
-				}
-			}
-		});
-	}*/
 
 
 	@Override
@@ -170,18 +96,27 @@ class ServerListener extends Thread {
 					String y = command.split(" ")[3];
 					if (client.anotherPlayers.get(id) != null) {
 						client.anotherPlayers.get(id).setPosition(Float.parseFloat(x), Float.parseFloat(y));
-					} else if (client.id != null && id == client.id) {
+					} else if (client.id != null && id.equals(client.id) && client.player != null) {
 						client.player.setPosition(Float.parseFloat(x), Float.parseFloat(y));
-					} else if (client.id != null){
+						client.posX = Float.parseFloat(x);
+						client.posY = Float.parseFloat(y);
+					} else if (client.id != null && !id.equals(client.id)){
 						String playerId = id;
 						Hero hero = new Hero(client.anotherHero);
 						client.anotherPlayers.put(playerId, hero);
+						client.anotherPlayers.get(playerId).setPosition(Float.parseFloat(x), Float.parseFloat(y));
 					}
 				} else if (command.startsWith("CREATED")) {
 					client.id = command.split(" ")[1];
 					String x = command.split(" ")[2];
 					String y = command.split(" ")[3];
 					client.player = new Hero(client.playerHero);
+					client.player.setPosition(Float.parseFloat(x), Float.parseFloat(y));
+					client.posX = Float.parseFloat(x);
+					client.posY = Float.parseFloat(y);
+				} else if (command.startsWith("REMOVEPLAYER")) {
+					String id = command.split(" ")[1];
+					client.anotherPlayers.remove(id);
 				}
 			}
 		} catch (java.io.EOFException e) {
