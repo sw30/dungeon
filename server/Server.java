@@ -11,6 +11,7 @@ class PlayerData {
 	public DataOutputStream clientOutput;
 	public DataInputStream clientInput;
 	public Room currentRoom = null;
+	public Dungeon currentDungeon = null;
 
 	public PlayerData(double x, double y, String socketID, Socket socket) throws IOException {
 		this.x = x;
@@ -23,17 +24,41 @@ class PlayerData {
 }
 
 
-class Room extends Thread {
+class Room extends Thread {	//room means room on the server, which contains one dungeon with its rooms
 
 	List<PlayerData> players = new ArrayList<PlayerData>();
 	int roomID;
+	List<Dungeon> dungeon = new ArrayList<Dungeon>();
 
 	public Room(PlayerData player1, PlayerData player2, int roomID) {
+		for (int i = 0; i < 6; ++i) {
+			dungeon.add(new Dungeon(i, -1, -1, -1, i + 1));
+			if (i != 0)
+				dungeon.get(i).direction[2] = i - 1;
+		}
 		players.add(player1);
 		players.get(0).currentRoom = this;
+		Random r = new Random();
+		players.get(0).currentDungeon = dungeon.get(0);
 		players.add(player2);
 		players.get(1).currentRoom = this;
+		players.get(1).currentDungeon = dungeon.get(r.nextInt(5) + 1);
 		this.roomID = roomID;
+	}
+
+}
+
+class Dungeon {
+	int ID;
+	int direction[] = new int[4];
+						//LEFT, RIGHT, UP, DOWN
+	
+	public Dungeon(int ID, int LEFT, int RIGHT, int UP, int DOWN) {
+		this.ID = ID;
+		direction[0] = LEFT;
+		direction[1] = RIGHT;
+		direction[2] = UP;
+		direction[3] = DOWN;
 	}
 }
 
@@ -85,6 +110,7 @@ public class Server extends Thread{
 					playersWithoutRooms.remove(player2);
 					Room newRoom = new Room(player1, player2, roomID++);
 					newRoom.start();
+					System.out.println("Created room " + roomID);
 				}
 			} catch (IOException e) {
 				System.out.println(e.getMessage() + ", failed to connect to client.");
@@ -175,7 +201,8 @@ class ClientHandler extends Thread {
 				} else if (command.startsWith("UPDATE")) {
 					if (player.currentRoom != null) {
 						for (PlayerData enemy : player.currentRoom.players) {
-							player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
+							if (player.currentDungeon == enemy.currentDungeon)
+								player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
 						}
 					}
 				}
