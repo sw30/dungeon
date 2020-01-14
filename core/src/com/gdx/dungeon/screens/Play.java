@@ -49,6 +49,21 @@ public class Play implements Screen {
 		camera.position.set(new Vector2(x, y), 0);
 	}
 
+
+	public void hideMap() {
+		map.dispose();
+	}
+
+	public void unhideMap() {
+		TmxMapLoader loader = new TmxMapLoader();
+		map = loader.load("maps/map1.tmx");
+	}
+
+	public void displayCenterText(String text) {
+		font.draw(batch, text, 200, 200);
+	}
+
+
 	@Override
 	public void render(float delta) {
 		Gdx.gl.glClearColor(0, 0, 0, 1);
@@ -58,12 +73,15 @@ public class Play implements Screen {
 		renderer.setView(camera);
 		renderer.render();
 		batch.begin();
-		if (client.player != null) {
-			client.player.draw(batch);
+		if (client.foundOpponent) {
+			if (client.player != null)
+				client.player.draw(batch);
+		} else {
+			hideMap();
+			displayCenterText("Wyszukiwanie drugiego gracza...");
 		}
 		font.draw(batch, "Health: " + client.player.health, 50, 375);
 		font.draw(batch, "Level: " + client.player.level, 50, 400);
-		font.draw(batch, "Wyszukiwanie drugiego gracza...", 200, 200);
 		for (HashMap.Entry<String, Hero> entry : client.anotherPlayers.entrySet()) {
 			entry.getValue().draw(batch);
 		}

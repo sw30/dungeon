@@ -33,6 +33,7 @@ public class DungeonClient extends Game {
 	Play play;
 	public double posX;
 	public double posY;
+	public boolean foundOpponent = true;
 
 
 	@Override
