@@ -67,7 +67,7 @@ public class Server extends Thread{
 	}
 
 
-	private void broadcast(String s) {
+	public void broadcast(String s) {
 		DataOutputStream dataOut = null;
 		for (PlayerData player : players) {
 			dataOut = (DataOutputStream)(player.clientOutput);
@@ -139,8 +139,8 @@ class ClientHandler extends Thread {
 					player.y = validateY(Double.parseDouble(y));
 				} else if (command.startsWith("DISCONNECT")) {
 					System.out.println("Player " + player.socketID + " has disconnected");
-					//String username = command.split(" ")[1];
-					break;		//decomment if other players will be handled too
+					server.broadcast("REMOVEPLAYER " + player.socketID);
+					break;
 				} else if (command.startsWith("LIST")) {
 					//clientOutput.writeUTF(Long.toString(fileCSV.length()));
 				} else if (command.startsWith("UPDATE")) {
