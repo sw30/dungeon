@@ -10,7 +10,7 @@ class PlayerData {
 	public Socket socket;
 	public DataOutputStream clientOutput;
 	public DataInputStream clientInput;
-
+	public Room currentRoom = null;
 
 	public PlayerData(double x, double y, String socketID, Socket socket) throws IOException {
 		this.x = x;
@@ -23,12 +23,29 @@ class PlayerData {
 }
 
 
+class Room extends Thread {
+
+	List<PlayerData> players = new ArrayList<PlayerData>();
+	int roomID;
+
+	public Room(PlayerData player1, PlayerData player2, int roomID) {
+		players.add(player1);
+		players.get(0).currentRoom = this;
+		players.add(player2);
+		players.get(1).currentRoom = this;
+		this.roomID = roomID;
+	}
+}
+
+
 public class Server extends Thread{
 	private int port = 8080;
 	public ServerSocket serverSock = null; 
 	int ID = 0;
+	int roomID = 0;
 	
 	List<PlayerData> players = new ArrayList<PlayerData>();
+	List<PlayerData> playersWithoutRooms = new ArrayList<PlayerData>();
 
 	public static void main(String args[]) {
 	   System.out.println("Hit control-c to exit the server.");
@@ -56,10 +73,19 @@ public class Server extends Thread{
 				}
 				PlayerData newPlayer = new PlayerData(100, 100, Integer.toString(ID), socket);
 				players.add(newPlayer);
-				System.out.println("Player " + Integer.toString(ID));
+				playersWithoutRooms.add(newPlayer);
+				System.out.println("Player " + Integer.toString(ID) + " connected");
 				ID++;
 				ClientHandler newHandler = new ClientHandler(newPlayer, this);
 				newHandler.start();
+				if (playersWithoutRooms.size() >= 2) {
+					PlayerData player1 = playersWithoutRooms.get(0);
+					PlayerData player2 = playersWithoutRooms.get(1);
+					playersWithoutRooms.remove(player1);
+					playersWithoutRooms.remove(player2);
+					Room newRoom = new Room(player1, player2, roomID++);
+					newRoom.start();
+				}
 			} catch (IOException e) {
 				System.out.println(e.getMessage() + ", failed to connect to client.");
 			} 
@@ -128,10 +154,15 @@ class ClientHandler extends Thread {
 				String command = player.clientInput.readUTF();
 				System.out.println(command);
 				if (command.startsWith("CONNECT")) {
-					String id = player.socketID;
-					String x = Double.toString(player.x);
-					String y = Double.toString(player.y);
-					player.clientOutput.writeUTF("CREATED " + id + " " + x + " " + y);
+					while (true) {
+						if (player.currentRoom != null) {
+							String id = player.socketID;
+							String x = Double.toString(player.x);
+							String y = Double.toString(player.y);
+							player.clientOutput.writeUTF("CREATED " + id + " " + x + " " + y);
+							break;
+						} else Thread.sleep(100);
+					}
 				} else if (command.startsWith("PLAYERMOVED")) {
 					String x = command.split(" ")[1];
 					String y = command.split(" ")[2];
@@ -141,11 +172,11 @@ class ClientHandler extends Thread {
 					System.out.println("Player " + player.socketID + " has disconnected");
 					server.broadcast("REMOVEPLAYER " + player.socketID);
 					break;
-				} else if (command.startsWith("LIST")) {
-					//clientOutput.writeUTF(Long.toString(fileCSV.length()));
 				} else if (command.startsWith("UPDATE")) {
-					for (PlayerData enemy : server.players) {
-						player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
+					if (player.currentRoom != null) {
+						for (PlayerData enemy : player.currentRoom.players) {
+							player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
+						}
 					}
 				}
 			} catch (Exception e) {
