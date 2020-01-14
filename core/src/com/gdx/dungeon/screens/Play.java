@@ -20,14 +20,14 @@ import java.util.HashMap;
 
 public class Play implements Screen {
 
-	private TiledMap map;
+	public TiledMap map = null;
 	private OrthogonalTiledMapRenderer renderer;
 	OrthographicCamera camera;
 	ExtendViewport viewport;
 	DungeonClient client;
 	SpriteBatch batch;
 	BitmapFont font;
-	private final float UPDATE_TIME = 1/60f;
+	private final float UPDATE_TIME = 1/30f;
 	float timer = 0;
 
 	public Play(DungeonClient info) {
@@ -41,9 +41,8 @@ public class Play implements Screen {
 
 	@Override
 	public void show() {
-		TmxMapLoader loader = new TmxMapLoader();
-		map = loader.load("maps/map1.tmx");
-		renderer = new OrthogonalTiledMapRenderer(map, 2.35f);
+		loadMap();
+		renderer = new OrthogonalTiledMapRenderer(map, 0);	//hidden
 		camera = new OrthographicCamera();
 		float x = 305, y = 230;
 		camera.position.set(new Vector2(x, y), 0);
@@ -51,12 +50,20 @@ public class Play implements Screen {
 
 
 	public void hideMap() {
-		map.dispose();
+		if (map != null)
+			renderer = new OrthogonalTiledMapRenderer(map, 0);
 	}
 
 	public void unhideMap() {
-		TmxMapLoader loader = new TmxMapLoader();
-		map = loader.load("maps/map1.tmx");
+		if (map != null)
+			renderer = new OrthogonalTiledMapRenderer(map, 2.35f);
+	}
+
+	public void loadMap() {
+		if (map == null) {
+			TmxMapLoader loader = new TmxMapLoader();
+			map = loader.load("maps/map1.tmx");
+		}
 	}
 
 	public void displayCenterText(String text) {
@@ -74,16 +81,22 @@ public class Play implements Screen {
 		renderer.render();
 		batch.begin();
 		if (client.foundOpponent) {
-			if (client.player != null)
-				client.player.draw(batch);
+			unhideMap();
+			if (client.player != null) {
+				//client.player.draw(batch);
+				batch.draw(client.player.frames.get(client.player.frame), client.player.getX(), client.player.getY());
+				//client.player.update(Gdx.graphics.getDeltaTime());
+			}
+			font.draw(batch, "Health: " + client.player.health, 50, 375);
+			font.draw(batch, "Level: " + client.player.level, 50, 400);
+			for (HashMap.Entry<String, Hero> entry : client.anotherPlayers.entrySet()) {
+				//entry.getValue().draw(batch);
+				batch.draw(entry.getValue().frames.get(entry.getValue().frame), entry.getValue().getX(), entry.getValue().getY());
+				//entry.getValue().update(Gdx.graphics.getDeltaTime());
+			}
 		} else {
 			hideMap();
 			displayCenterText("Wyszukiwanie drugiego gracza...");
-		}
-		font.draw(batch, "Health: " + client.player.health, 50, 375);
-		font.draw(batch, "Level: " + client.player.level, 50, 400);
-		for (HashMap.Entry<String, Hero> entry : client.anotherPlayers.entrySet()) {
-			entry.getValue().draw(batch);
 		}
 		batch.end();
 	}
@@ -112,7 +125,10 @@ public class Play implements Screen {
 
 	@Override
 	public void dispose() {
-		map.dispose();
+		if (map != null) {
+			map.dispose();
+			map = null;
+		}
 		renderer.dispose();
 	}
 

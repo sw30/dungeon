@@ -3,18 +3,11 @@ package com.gdx.dungeon;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.math.Vector2;
 import com.gdx.dungeon.screens.Play;
 import com.gdx.dungeon.sprites.Hero;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.net.ConnectException;
 import java.net.Socket;
-import java.net.SocketException;
 import java.util.HashMap;
 
 public class DungeonClient extends Game {
@@ -33,7 +26,7 @@ public class DungeonClient extends Game {
 	Play play;
 	public double posX;
 	public double posY;
-	public boolean foundOpponent = true;
+	public boolean foundOpponent = false;
 
 
 	@Override
@@ -41,9 +34,8 @@ public class DungeonClient extends Game {
 		connectSocket();
 		play = new Play(this);
 		setScreen(play);
-		playerHero = new Texture("heroes/knight/knight_idle_anim_f0.png");
-		anotherHero = new Texture("heroes/knight/knight_idle_anim_f0.png");
-		//configSocketEvents();
+		playerHero = new Texture("heroes/knight/knight_run_spritesheet.png");
+		anotherHero = new Texture("heroes/knight/knight_run_spritesheet.png");
 		serverListener = new ServerListener(dataInput, dataOutput, this);
 		serverListener.start();
 	}
@@ -96,8 +88,12 @@ class ServerListener extends Thread {
 					String x = command.split(" ")[2];
 					String y = command.split(" ")[3];
 					if (client.anotherPlayers.get(id) != null) {
+						if (client.anotherPlayers.get(id).didHeroMove(Float.parseFloat(x), Float.parseFloat(y)))
+							client.anotherPlayers.get(id).update(Gdx.graphics.getDeltaTime());
 						client.anotherPlayers.get(id).setPosition(Float.parseFloat(x), Float.parseFloat(y));
 					} else if (client.id != null && id.equals(client.id) && client.player != null) {
+						if (client.player.didHeroMove(Float.parseFloat(x), Float.parseFloat(y)))
+							client.player.update(Gdx.graphics.getDeltaTime());
 						client.player.setPosition(Float.parseFloat(x), Float.parseFloat(y));
 						client.posX = Float.parseFloat(x);
 						client.posY = Float.parseFloat(y);
@@ -111,6 +107,7 @@ class ServerListener extends Thread {
 					client.id = command.split(" ")[1];
 					String x = command.split(" ")[2];
 					String y = command.split(" ")[3];
+					client.foundOpponent = true;
 					client.player = new Hero(client.playerHero);
 					client.player.setPosition(Float.parseFloat(x), Float.parseFloat(y));
 					client.posX = Float.parseFloat(x);
