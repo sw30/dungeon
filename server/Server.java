@@ -50,7 +50,7 @@ class Room extends Thread {	//room means room on the server, which contains one 
 
 class Dungeon {
 	int ID;
-	int direction[] = new int[4];
+	public int direction[] = new int[4];
 						//LEFT, RIGHT, UP, DOWN
 	
 	public Dungeon(int ID, int LEFT, int RIGHT, int UP, int DOWN) {
@@ -146,10 +146,10 @@ public class Server extends Thread{
 class ClientHandler extends Thread {
 	private Server server;
 	private PlayerData player;
-	double wallLeftX = 29.918842;
-	double wallUpY = 312.8834;
-	double wallRightX = 583.09235;
-	double wallDownY = 36.297974;
+	double wallLeftX = 20.918842;
+	double wallUpY = 305.8834;
+	double wallRightX = 578.09235;
+	double wallDownY = 29.297974;
 
 
 	ClientHandler(PlayerData player, Server server) throws IOException {
@@ -204,6 +204,7 @@ class ClientHandler extends Thread {
 							if (player.currentDungeon == enemy.currentDungeon)
 								player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
 						}
+						player.clientOutput.writeUTF("ROOM_UPDATE " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
 					}
 				}
 			} catch (Exception e) {
