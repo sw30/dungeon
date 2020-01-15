@@ -146,7 +146,7 @@ public class Server extends Thread{
 class ClientHandler extends Thread {
 	private Server server;
 	private PlayerData player;
-	double wallLeftX = 20.918842;
+	double wallLeftX = 15.918842;
 	double wallUpY = 305.8834;
 	double wallRightX = 578.09235;
 	double wallDownY = 29.297974;
