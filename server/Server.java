@@ -50,6 +50,7 @@ class Room extends Thread {	//room means room on the server, which contains one 
 
 class Dungeon {
 	int ID;
+	List<String> monsters = new ArrayList<String>();
 	public int direction[] = new int[4];
 						//LEFT, RIGHT, UP, DOWN
 	
@@ -59,6 +60,12 @@ class Dungeon {
 		direction[1] = RIGHT;
 		direction[2] = UP;
 		direction[3] = DOWN;
+	}
+
+	public boolean areMonstersKilled() {
+		if (monsters.size() == 0)
+			return true;
+		return false;
 	}
 }
 
@@ -204,7 +211,10 @@ class ClientHandler extends Thread {
 							if (player.currentDungeon == enemy.currentDungeon)
 								player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
 						}
-						player.clientOutput.writeUTF("ROOM_UPDATE " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
+						if (player.currentDungeon.areMonstersKilled())
+							player.clientOutput.writeUTF("ROOM_UPDATE_OPENED " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
+						else
+							player.clientOutput.writeUTF("ROOM_UPDATE_CLOSED " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
 					}
 				}
 			} catch (Exception e) {
