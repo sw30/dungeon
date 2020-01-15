@@ -96,7 +96,7 @@ public class Server extends Thread{
 				synchronized(serverSock) {
 					socket = serverSock.accept();
 				}
-				PlayerData newPlayer = new PlayerData(100, 100, Integer.toString(ID), socket);
+				PlayerData newPlayer = new PlayerData(300, 150, Integer.toString(ID), socket);
 				players.add(newPlayer);
 				playersWithoutRooms.add(newPlayer);
 				System.out.println("Player " + Integer.toString(ID) + " connected");
