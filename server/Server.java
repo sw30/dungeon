@@ -31,21 +31,17 @@ class Room extends Thread {	//room means room on the server, which contains one 
 	List<Dungeon> dungeon = new ArrayList<Dungeon>();
 
 	public Room(PlayerData player1, PlayerData player2, int roomID) {
-		for (int i = 0; i < 6; ++i) {
-			if (i != 5)
-				dungeon.add(new Dungeon(i, -1, -1, -1, i + 1));
-			else
-				dungeon.add(new Dungeon(i, -1, -1, -1, -1));
-			if (i != 0)
-				dungeon.get(i).direction[2] = i - 1;
-		}
+		dungeon.add(new Dungeon(0, -1, -1, -1, 1));
+		dungeon.add(new Dungeon(1, 2, -1, 0, -1));
+		dungeon.add(new Dungeon(2, 3, 1, -1, -1));
+		dungeon.add(new Dungeon(3, -1, 3, -1, -1));
 		players.add(player1);
 		players.get(0).currentRoom = this;
 		Random r = new Random();
 		players.get(0).currentDungeon = dungeon.get(0);
 		players.add(player2);
 		players.get(1).currentRoom = this;
-		players.get(1).currentDungeon = dungeon.get(r.nextInt(5) + 1);
+		players.get(1).currentDungeon = dungeon.get(r.nextInt(dungeon.size()) + 1);
 		this.roomID = roomID;
 	}
 
@@ -230,8 +226,8 @@ class ClientHandler extends Thread {
 							player.currentDungeon = player.currentRoom.dungeon.get(destination); 
 							player.x = 100;
 							player.y = 100;
+							player.clientOutput.writeUTF("RESET_PLAYERS");
 						}
-						player.clientOutput.writeUTF("RESET_PLAYERS");
 						for (PlayerData enemy : player.currentRoom.players) {
 							if (player.currentDungeon == enemy.currentDungeon)
 								player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
