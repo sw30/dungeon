@@ -16,6 +16,12 @@ class PlayerData {
 	public double maxHealth = 3;
 	public double currentHealth = 3;
 
+	public long lastAttack = -100;
+	public double attackX;
+	public double attackY;
+	public int lastDirection;
+
+
 	public PlayerData(double x, double y, String socketID, Socket socket) throws IOException {
 		this.x = x;
 		this.y = y;
@@ -23,6 +29,34 @@ class PlayerData {
 		this.socket = socket;
 		clientOutput = new DataOutputStream(socket.getOutputStream());
 		clientInput = new DataInputStream(socket.getInputStream());
+	}
+
+	public void attack(int direction) {
+		lastDirection = direction;
+		lastAttack = System.currentTimeMillis();
+		attackX = x;
+		attackY = y;
+		if (direction == 0)
+			attackX -= attackRange;
+		else if (direction == 1)
+			attackX += attackRange;
+		else if (direction == 2) 
+			attackY += attackRange;
+		else if (direction == 3)
+			attackY -= attackRange;
+	}
+
+	public void updateAttackXY() {
+		attackX = x;
+		attackY = y;
+		if (lastDirection == 0)
+			attackX -= attackRange;
+		else if (lastDirection == 1)
+			attackX += attackRange;
+		else if (lastDirection == 2) 
+			attackY += attackRange;
+		else if (lastDirection == 3)
+			attackY -= attackRange;
 	}
 }
 
@@ -187,17 +221,13 @@ class ClientHandler extends Thread {
 	int isPlayerInDoors(double x, double y, Dungeon dungeon) {
 		if (x > 289 && x < 310) {
 			if (y < wallDownY + 3.0 && dungeon.direction[3] != -1)
-				//return 3;
 				return dungeon.direction[3];
 			else if (y > wallUpY - 3.0 && dungeon.direction[2] != -1)
-				//return 2;
 				return dungeon.direction[2];
 		} else if (y > 149 && y < 166) {
 			if (x < wallLeftX + 3.0 && dungeon.direction[0] != -1)
-				//return 0;
 				return dungeon.direction[0];
 			else if (x > wallRightX - 3.0 && dungeon.direction[1] != -1)
-				//return 1;
 				return dungeon.direction[1];
 		}
 		return -1;
@@ -257,6 +287,12 @@ class ClientHandler extends Thread {
 										synchronized (player.clientOutput) {
 											player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
 										}
+										if (player.lastAttack > System.currentTimeMillis() - 300 && player.currentDungeon == enemy.currentDungeon) {
+											player.updateAttackXY();
+											synchronized (player.clientOutput) {
+												player.clientOutput.writeUTF("DRAW_ATTACK " + player.attackX + " " + player.attackY);
+											}
+										}
 									} else {
 										synchronized (enemy.clientOutput) {
 											enemy.clientOutput.writeUTF("RESET_PLAYERS");
@@ -268,6 +304,16 @@ class ClientHandler extends Thread {
 									player.clientOutput.writeUTF("ROOM_UPDATE_OPENED " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
 								else
 									player.clientOutput.writeUTF("ROOM_UPDATE_CLOSED " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
+							}
+						}
+					} else if (command.startsWith("ATTACK")) {
+						int direction = Integer.parseInt(command.split(" ")[1]);
+						player.attack(direction);
+						for (PlayerData enemy : player.currentRoom.players) {
+							if (player.currentDungeon == enemy.currentDungeon) {
+								synchronized (enemy.clientOutput) {
+									enemy.clientOutput.writeUTF("DRAW_ATTACK " + player.attackX + " " + player.attackY);
+								}
 							}
 						}
 					}
