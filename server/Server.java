@@ -107,6 +107,14 @@ class Room {	//room means room on the server, which contains one dungeon with it
 		this.roomID = roomID;
 	}
 
+	public boolean areBothPlayersAliveInDungeon() {
+		if (players.size() != 2)
+			return false;
+		if (players.get(0).currentDungeon == players.get(1).currentDungeon && players.get(0).currentHealth > 0 && players.get(1).currentHealth > 0)
+			return true;
+		return false;
+	}
+
 }
 
 class Dungeon {
@@ -331,7 +339,7 @@ class ClientHandler extends Thread {
 								}
 							}
 							synchronized (player.clientOutput) {
-								if (player.currentDungeon.areMonstersKilled())
+								if (player.currentDungeon.areMonstersKilled() && !player.currentRoom.areBothPlayersAliveInDungeon())
 									player.clientOutput.writeUTF("ROOM_UPDATE_OPENED " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
 								else
 									player.clientOutput.writeUTF("ROOM_UPDATE_CLOSED " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
