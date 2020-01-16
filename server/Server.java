@@ -328,6 +328,7 @@ class ClientHandler extends Thread {
 				} else if (command.startsWith("DISCONNECT")) {
 					System.out.println("Player " + player.socketID + " has disconnected");
 					server.broadcast("REMOVEPLAYER " + player.socketID);
+					server.broadcast("ECHO Player " + player.socketID + " has disconnected");
 					break;
 				} else if (player.ready && command.startsWith("UPDATE")) {
 					if (player.currentHealth <= 0.0) {
@@ -372,6 +373,7 @@ class ClientHandler extends Thread {
 											synchronized (player.clientOutput) {
 												player.clientOutput.writeUTF("LEVEL_UP " + player.level);
 											}
+											server.broadcast("ECHO Player " + player.socketID + " has progressed to " + player.level + " level");
 											Thread.sleep(3000);
 											server.playersWithoutRooms.add(player);
 											player.ready = false;
@@ -439,6 +441,7 @@ class ClientHandler extends Thread {
 				server.players.remove(player);
 				System.out.println("Player " + player.socketID + " has disconnected");
 				server.broadcast("REMOVEPLAYER " + player.socketID);
+				server.broadcast("ECHO Player " + player.socketID + " has disconnected");
 				break;
 			} 
 		}
