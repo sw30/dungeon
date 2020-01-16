@@ -34,14 +34,14 @@ class Room extends Thread {	//room means room on the server, which contains one 
 		dungeon.add(new Dungeon(0, -1, -1, -1, 1));
 		dungeon.add(new Dungeon(1, 2, -1, 0, -1));
 		dungeon.add(new Dungeon(2, 3, 1, -1, -1));
-		dungeon.add(new Dungeon(3, -1, 3, -1, -1));
+		dungeon.add(new Dungeon(3, -1, 2, -1, -1));
 		players.add(player1);
 		players.get(0).currentRoom = this;
 		Random r = new Random();
 		players.get(0).currentDungeon = dungeon.get(0);
 		players.add(player2);
 		players.get(1).currentRoom = this;
-		players.get(1).currentDungeon = dungeon.get(r.nextInt(dungeon.size()) + 1);
+		players.get(1).currentDungeon = dungeon.get(r.nextInt(dungeon.size() - 2) + 1);
 		this.roomID = roomID;
 	}
 
@@ -179,17 +179,21 @@ class ClientHandler extends Thread {
 		return y;
 	}
 
-	int isPlayerInDoors(double x, double y) {
+	int isPlayerInDoors(double x, double y, Dungeon dungeon) {
 		if (x > 289 && x < 310) {
-			if (y < wallDownY + 3.0)
-				return 3;
-			else if (y > wallUpY - 3.0)
-				return 2;
+			if (y < wallDownY + 3.0 && dungeon.direction[3] != -1)
+				//return 3;
+				return dungeon.direction[3];
+			else if (y > wallUpY - 3.0 && dungeon.direction[2] != -1)
+				//return 2;
+				return dungeon.direction[2];
 		} else if (y > 149 && y < 166) {
-			if (x < wallLeftX + 3.0)
-				return 0;
-			else if (x > wallRightX - 3.0)
-				return 1;
+			if (x < wallLeftX + 3.0 && dungeon.direction[0] != -1)
+				//return 0;
+				return dungeon.direction[0];
+			else if (x > wallRightX - 3.0 && dungeon.direction[1] != -1)
+				//return 1;
+				return dungeon.direction[1];
 		}
 		return -1;
 	}
@@ -221,9 +225,9 @@ class ClientHandler extends Thread {
 					break;
 				} else if (command.startsWith("UPDATE")) {
 					if (player.currentRoom != null) {
-						int destination = isPlayerInDoors(player.x, player.y);
-						if (destination != -1) {
-							player.currentDungeon = player.currentRoom.dungeon.get(destination); 
+						int doorID = isPlayerInDoors(player.x, player.y, player.currentDungeon);
+						if (doorID != -1) {
+							player.currentDungeon = player.currentRoom.dungeon.get(doorID); 
 							player.x = 100;
 							player.y = 100;
 							player.clientOutput.writeUTF("RESET_PLAYERS");
