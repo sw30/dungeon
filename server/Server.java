@@ -68,6 +68,8 @@ class PlayerData {
 	public boolean checkIfAttacked(double x, double y) {
 		double up = 20;
 		double down = 20;
+		double left = 15;
+		double right = 15;
 		if (lastDirection == 0) {
 			if (x >= attackX - attackRange && x <= attackX && y <= attackY + down && y >= attackY - up)
 				return true;
@@ -75,10 +77,10 @@ class PlayerData {
 			if (x >= attackX && x <= attackX + attackRange && y <= attackY + down && y >= attackY - up)
 				return true;
 		} else if (lastDirection == 2) {
-			if (y >= attackY && y <= attackY + attackRange && x <= attackX + 3 && x >= attackX - 3)
+			if (y >= attackY && y <= attackY + attackRange && x <= attackX + left && x >= attackX - right)
 				return true;
 		} else if (lastDirection == 3) {
-			if (y >= attackY - attackRange && y <= attackY && x <= attackX + 3 && x >= attackX - 3)
+			if (y >= attackY - attackRange && y <= attackY && x <= attackX + left && x >= attackX - right)
 				return true;
 		}
 		return false;
@@ -306,6 +308,8 @@ class ClientHandler extends Thread {
 				if (!player.ready && command.startsWith("CONNECT")) {
 					while (true) {
 						if (player.currentRoom != null) {
+							player.x = 300;
+							player.y = 150;
 							String id = player.socketID;
 							String x = Double.toString(player.x);
 							String y = Double.toString(player.y);
@@ -416,7 +420,6 @@ class ClientHandler extends Thread {
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
-				player.currentHealth = 0.0;
 				if (player.currentRoom != null) {
 					for (PlayerData enemy : player.currentRoom.players) {
 						try {
@@ -425,15 +428,17 @@ class ClientHandler extends Thread {
 									enemy.clientOutput.writeUTF("LEVEL_UP " + enemy.level);
 								}
 								enemy.currentRoom = null;
+								server.playersWithoutRooms.add(enemy);
+								enemy.ready = false;
 							}
 						} catch (Exception f) {
 							f.printStackTrace();
 						}
 					}
 				}
-				/*server.players.remove(player);
+				server.players.remove(player);
 				System.out.println("Player " + player.socketID + " has disconnected");
-				server.broadcast("REMOVEPLAYER " + player.socketID); */
+				server.broadcast("REMOVEPLAYER " + player.socketID);
 				break;
 			} 
 		}
