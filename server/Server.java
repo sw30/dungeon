@@ -77,11 +77,13 @@ class PlayerData {
 		return false;
 	}
 
-	public void beAttacked() {
+	public boolean beAttacked() {
 		if (coolDown + 1000 < System.currentTimeMillis()) {
 			coolDown = System.currentTimeMillis();
 			currentHealth -= 0.5;
+			return true;
 		}
+		return false;
 	}
 }
 
@@ -326,15 +328,25 @@ class ClientHandler extends Thread {
 											enemy.clientOutput.writeUTF("DRAW_ATTACK " + player.attackX + " " + player.attackY);
 										}
 										if (player != enemy && player.checkIfAttacked(enemy.x, enemy.y)) {
-											enemy.beAttacked();
-											synchronized (enemy.clientOutput) {
-												enemy.clientOutput.writeUTF("HEALTH_UPDATE " + enemy.currentHealth);
+											if (enemy.beAttacked()) {
+												synchronized (enemy.clientOutput) {
+													enemy.clientOutput.writeUTF("HEALTH_UPDATE " + enemy.currentHealth);
+													enemy.clientOutput.writeUTF("CHANGE_SPRITE " + enemy.socketID);
+												}
+												synchronized (player.clientOutput) {
+													player.clientOutput.writeUTF("CHANGE_SPRITE " + enemy.socketID);
+												}
 											}
 										}
 									}
 								} else {
 									synchronized (enemy.clientOutput) {
 										enemy.clientOutput.writeUTF("RESET_PLAYERS");
+									}
+								}
+								if (enemy.coolDown + 1000 < System.currentTimeMillis()) {
+									synchronized (player.clientOutput) {
+										player.clientOutput.writeUTF("RESET_SPRITE " + enemy.socketID);
 									}
 								}
 							}
