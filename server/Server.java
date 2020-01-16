@@ -125,12 +125,14 @@ public class Server extends Thread{
 	}
 
 
-	public void broadcast(String s) {
+	synchronized public void broadcast(String s) {
 		DataOutputStream dataOut = null;
 		for (PlayerData player : players) {
 			dataOut = (DataOutputStream)(player.clientOutput);
 			try { 
-				dataOut.writeUTF(s); 
+				synchronized (dataOut) {
+					dataOut.writeUTF(s); 
+				}
 			} catch (IOException x) {
 				System.out.println(x.getMessage() + ": Failed to broadcast to client.");
 			}
@@ -201,52 +203,76 @@ class ClientHandler extends Thread {
 	@Override
 	public void run()  {
 		while (true) {
-			try {
-				String command = player.clientInput.readUTF();
-				System.out.println(command);
-				if (command.startsWith("CONNECT")) {
-					while (true) {
+				try {
+					String command = "";
+					synchronized (player.clientInput) {
+						command = player.clientInput.readUTF();
+					}
+					System.out.println(command);
+					if (command.startsWith("CONNECT")) {
+						while (true) {
+							if (player.currentRoom != null) {
+								String id = player.socketID;
+								String x = Double.toString(player.x);
+								String y = Double.toString(player.y);
+								synchronized (player.clientOutput) {
+									player.clientOutput.writeUTF("CREATED " + id + " " + x + " " + y);
+								}
+								break;
+							} else Thread.sleep(100);
+						}
+					} else if (command.startsWith("PLAYERMOVED")) {
+						String x = command.split(" ")[1];
+						String y = command.split(" ")[2];
+						player.x = validateX(Double.parseDouble(x));
+						player.y = validateY(Double.parseDouble(y));
+					} else if (command.startsWith("DISCONNECT")) {
+						System.out.println("Player " + player.socketID + " has disconnected");
+						server.broadcast("REMOVEPLAYER " + player.socketID);
+						break;
+					} else if (command.startsWith("UPDATE")) {
 						if (player.currentRoom != null) {
-							String id = player.socketID;
-							String x = Double.toString(player.x);
-							String y = Double.toString(player.y);
-							player.clientOutput.writeUTF("CREATED " + id + " " + x + " " + y);
-							break;
-						} else Thread.sleep(100);
+							int doorID = isPlayerInDoors(player.x, player.y, player.currentDungeon);
+							if (doorID != -1) {
+								if (doorID == player.currentDungeon.direction[0]) {
+									player.x = 575;
+									player.y = 150;
+								} else if (doorID == player.currentDungeon.direction[1]) {
+									player.x = 16;
+									player.y = 150;
+								} else if (doorID == player.currentDungeon.direction[2]) {
+									player.x = 300;
+									player.y = 30;
+								} else {
+									player.x = 300;
+									player.y = 305;
+								}
+								player.currentDungeon = player.currentRoom.dungeon.get(doorID);
+							}
+							for (PlayerData enemy : player.currentRoom.players) {
+									if (player.currentDungeon == enemy.currentDungeon) {
+										synchronized (player.clientOutput) {
+											player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
+										}
+									} else {
+										synchronized (enemy.clientOutput) {
+											enemy.clientOutput.writeUTF("RESET_PLAYERS");
+										}
+									}
+							}
+							synchronized (player.clientOutput) {
+								if (player.currentDungeon.areMonstersKilled())
+									player.clientOutput.writeUTF("ROOM_UPDATE_OPENED " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
+								else
+									player.clientOutput.writeUTF("ROOM_UPDATE_CLOSED " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
+							}
+						}
 					}
-				} else if (command.startsWith("PLAYERMOVED")) {
-					String x = command.split(" ")[1];
-					String y = command.split(" ")[2];
-					player.x = validateX(Double.parseDouble(x));
-					player.y = validateY(Double.parseDouble(y));
-				} else if (command.startsWith("DISCONNECT")) {
+				} catch (Exception e) {
+					server.players.remove(player);
 					System.out.println("Player " + player.socketID + " has disconnected");
-					server.broadcast("REMOVEPLAYER " + player.socketID);
 					break;
-				} else if (command.startsWith("UPDATE")) {
-					if (player.currentRoom != null) {
-						int doorID = isPlayerInDoors(player.x, player.y, player.currentDungeon);
-						if (doorID != -1) {
-							player.currentDungeon = player.currentRoom.dungeon.get(doorID); 
-							player.x = 100;
-							player.y = 100;
-							player.clientOutput.writeUTF("RESET_PLAYERS");
-						}
-						for (PlayerData enemy : player.currentRoom.players) {
-							if (player.currentDungeon == enemy.currentDungeon)
-								player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
-						}
-						if (player.currentDungeon.areMonstersKilled())
-							player.clientOutput.writeUTF("ROOM_UPDATE_OPENED " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
-						else
-							player.clientOutput.writeUTF("ROOM_UPDATE_CLOSED " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
-					}
-				}
-			} catch (Exception e) {
-				server.players.remove(player);
-				System.out.println("Player " + player.socketID + " has disconnected");
-				break;
-			} 
+				} 
 		}
 	}
 	
