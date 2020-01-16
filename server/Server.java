@@ -61,17 +61,19 @@ class PlayerData {
 	}
 
 	public boolean checkIfAttacked(double x, double y) {
+		double up = 20;
+		double down = 20;
 		if (lastDirection == 0) {
-			if (x >= attackX - attackRange && x <= attackX )
+			if (x >= attackX - attackRange && x <= attackX && y <= attackY + down && y >= attackY - up)
 				return true;
 		} else if (lastDirection == 1) {
-			if (x >= attackX && x <= attackX + attackRange)
+			if (x >= attackX && x <= attackX + attackRange && y <= attackY + down && y >= attackY - up)
 				return true;
 		} else if (lastDirection == 2) {
-			if (y >= attackY && y <= attackY + attackRange)
+			if (y >= attackY && y <= attackY + attackRange && x <= attackX + 3 && x >= attackX - 3)
 				return true;
 		} else if (lastDirection == 3) {
-			if (y >= attackY - attackRange && y <= attackY)
+			if (y >= attackY - attackRange && y <= attackY && x <= attackX + 3 && x >= attackX - 3)
 				return true;
 		}
 		return false;
