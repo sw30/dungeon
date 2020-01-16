@@ -12,6 +12,9 @@ class PlayerData {
 	public DataInputStream clientInput;
 	public Room currentRoom = null;
 	public Dungeon currentDungeon = null;
+	public double attackRange = 25;
+	public double maxHealth = 3;
+	public double currentHealth = 3;
 
 	public PlayerData(double x, double y, String socketID, Socket socket) throws IOException {
 		this.x = x;
@@ -24,7 +27,7 @@ class PlayerData {
 }
 
 
-class Room extends Thread {	//room means room on the server, which contains one dungeon with its rooms
+class Room {	//room means room on the server, which contains one dungeon with its rooms
 
 	List<PlayerData> players = new ArrayList<PlayerData>();
 	int roomID;
@@ -115,7 +118,7 @@ public class Server extends Thread{
 					playersWithoutRooms.remove(player1);
 					playersWithoutRooms.remove(player2);
 					Room newRoom = new Room(player1, player2, roomID++);
-					newRoom.start();
+					//newRoom.start();
 					System.out.println("Created room " + roomID);
 				}
 			} catch (IOException e) {
