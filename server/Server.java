@@ -12,14 +12,15 @@ class PlayerData {
 	public DataInputStream clientInput;
 	public Room currentRoom = null;
 	public Dungeon currentDungeon = null;
-	public double attackRange = 25;
-	public double maxHealth = 3;
-	public double currentHealth = 3;
+	public double attackRange = 20;
+	public double maxHealth = 3.0;
+	public double currentHealth = 3.0;
 
 	public long lastAttack = -100;
 	public double attackX;
 	public double attackY;
 	public int lastDirection;
+	public long coolDown = -1001;
 
 
 	public PlayerData(double x, double y, String socketID, Socket socket) throws IOException {
@@ -57,6 +58,30 @@ class PlayerData {
 			attackY += attackRange;
 		else if (lastDirection == 3)
 			attackY -= attackRange;
+	}
+
+	public boolean checkIfAttacked(double x, double y) {
+		if (lastDirection == 0) {
+			if (x >= attackX - attackRange && x <= attackX )
+				return true;
+		} else if (lastDirection == 1) {
+			if (x >= attackX && x <= attackX + attackRange)
+				return true;
+		} else if (lastDirection == 2) {
+			if (y >= attackY && y <= attackY + attackRange)
+				return true;
+		} else if (lastDirection == 3) {
+			if (y >= attackY - attackRange && y <= attackY)
+				return true;
+		}
+		return false;
+	}
+
+	public void beAttacked() {
+		if (coolDown + 1000 < System.currentTimeMillis()) {
+			coolDown = System.currentTimeMillis();
+			currentHealth -= 0.5;
+		}
 	}
 }
 
@@ -283,21 +308,27 @@ class ClientHandler extends Thread {
 								player.currentDungeon = player.currentRoom.dungeon.get(doorID);
 							}
 							for (PlayerData enemy : player.currentRoom.players) {
-									if (player.currentDungeon == enemy.currentDungeon) {
-										synchronized (player.clientOutput) {
-											player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
+								if (player.currentDungeon == enemy.currentDungeon) {
+									synchronized (player.clientOutput) {
+										player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
+									}
+									if (player.lastAttack > System.currentTimeMillis() - 300 && player.currentDungeon == enemy.currentDungeon) {
+										player.updateAttackXY();
+										synchronized (enemy.clientOutput) {
+											enemy.clientOutput.writeUTF("DRAW_ATTACK " + player.attackX + " " + player.attackY);
 										}
-										if (player.lastAttack > System.currentTimeMillis() - 300 && player.currentDungeon == enemy.currentDungeon) {
-											player.updateAttackXY();
-											synchronized (player.clientOutput) {
-												player.clientOutput.writeUTF("DRAW_ATTACK " + player.attackX + " " + player.attackY);
+										if (player != enemy && player.checkIfAttacked(enemy.x, enemy.y)) {
+											enemy.beAttacked();
+											synchronized (enemy.clientOutput) {
+												enemy.clientOutput.writeUTF("HEALTH_UPDATE " + enemy.currentHealth);
 											}
 										}
-									} else {
-										synchronized (enemy.clientOutput) {
-											enemy.clientOutput.writeUTF("RESET_PLAYERS");
-										}
 									}
+								} else {
+									synchronized (enemy.clientOutput) {
+										enemy.clientOutput.writeUTF("RESET_PLAYERS");
+									}
+								}
 							}
 							synchronized (player.clientOutput) {
 								if (player.currentDungeon.areMonstersKilled())
