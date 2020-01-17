@@ -105,11 +105,40 @@ class Room {	//room means room on the server, which contains many dungeons; each
 	PlayerData loser = null;
 	PlayerData winner = null;
 
+	public void addDungeon() {
+		if (dungeon.size() == 0)
+			dungeon.add(new Dungeon(0, -1, -1, -1, -1));
+		else {
+			Random r = new Random();
+			int newID = dungeon.size();
+			int id = r.nextInt(newID);
+			while (!dungeon.get(id).areAvailableDoors()) {
+				id++;
+				id = id % newID;
+			}
+			int direction = r.nextInt(4);
+			while (dungeon.get(id).direction[direction] != -1) {
+				direction++;
+				direction = direction % 4;
+			}
+			dungeon.get(id).direction[direction] = newID;
+			int LEFT = -1, RIGHT = -1, UP = -1, DOWN = -1;
+			if (direction == 0)
+				RIGHT = id;
+			else if (direction == 1)
+				LEFT = id;
+			else if (direction == 2)
+				DOWN = id;
+			else if (direction == 3)
+				UP = id;
+			Dungeon newDungeon = new Dungeon(newID, LEFT, RIGHT, UP, DOWN);	
+			dungeon.add(newDungeon);
+		}
+	}
+
 	public Room(PlayerData player1, PlayerData player2, int roomID) {
-		dungeon.add(new Dungeon(0, -1, -1, -1, 1));
-		dungeon.add(new Dungeon(1, 2, -1, 0, -1));
-		dungeon.add(new Dungeon(2, 3, 1, -1, -1));
-		dungeon.add(new Dungeon(3, -1, 2, -1, -1));
+		for (int i = 0; i < 10; ++i)
+			this.addDungeon();
 		players.add(player1);
 		players.get(0).currentRoom = this;
 		Random r = new Random();
@@ -147,6 +176,13 @@ class Dungeon {
 	public boolean areMonstersKilled() {
 		if (monsters.size() == 0)
 			return true;
+		return false;
+	}
+
+	public boolean areAvailableDoors() {
+		for (int i = 0; i < 4; ++i)
+			if (direction[i] == -1)
+				return true;
 		return false;
 	}
 }
