@@ -159,9 +159,32 @@ class Room {	//room means room on the server, which contains many dungeons; each
 
 }
 
+
+class Monster {
+	public double x;
+	public double y;
+	public String type;
+	public double health;
+	public double velocity;
+	public int id;
+
+	public Monster(int id, int x, int y, String type) {
+		this.x = x;
+		this.y = y;
+		this.type = type;
+		this.id = id;
+		if (type == "FLY") {
+			health = 1.0;
+			velocity = 3.0;
+		}
+	}
+
+}
+
+
 class Dungeon {
 	int ID;
-	List<String> monsters = new ArrayList<String>();
+	List<Monster> monsters = new ArrayList<Monster>();
 	public int direction[] = new int[4];
 						//LEFT, RIGHT, UP, DOWN
 	
@@ -171,6 +194,9 @@ class Dungeon {
 		direction[1] = RIGHT;
 		direction[2] = UP;
 		direction[3] = DOWN;
+		monsters.add(new Monster(0, 100, 200, "FLY"));
+		monsters.add(new Monster(1, 400, 200, "FLY"));
+		monsters.add(new Monster(2, 250, 100, "FLY"));
 	}
 
 	public boolean areMonstersKilled() {
@@ -188,7 +214,7 @@ class Dungeon {
 }
 
 
-public class Server extends Thread{
+public class Server extends Thread {
 	private int port = 8080;
 	public ServerSocket serverSock = null; 
 	int ID = 0;
@@ -340,7 +366,7 @@ class ClientHandler extends Thread {
 				synchronized (player.clientInput) {
 					command = player.clientInput.readUTF();
 				}
-				System.out.println(command);
+				//System.out.println(command);
 				if (!player.ready && command.startsWith("CONNECT")) {
 					while (true) {
 						if (player.currentRoom != null) {
@@ -436,6 +462,11 @@ class ClientHandler extends Thread {
 								}
 							}
 						}
+						for (Monster monster : player.currentDungeon.monsters) {
+							synchronized (player.clientOutput) {
+								player.clientOutput.writeUTF("MONSTER_UPDATE " + monster.id + " " + monster.type + " " + monster.x + " " + monster.y);
+							}
+						}
 						if (player.ready && player.currentRoom != null) {
 							synchronized (player.clientOutput) {
 								if (player.currentDungeon.areMonstersKilled() && !player.currentRoom.areBothPlayersAliveInDungeon())
@@ -461,23 +492,22 @@ class ClientHandler extends Thread {
 				if (player.currentRoom != null) {
 					for (PlayerData enemy : player.currentRoom.players) {
 						try {
-							if (enemy != player) {
-								synchronized (enemy.clientOutput) {
-									enemy.clientOutput.writeUTF("LEVEL_UP " + enemy.level);
-								}
-								enemy.currentRoom = null;
-								server.playersWithoutRooms.add(enemy);
-								enemy.ready = false;
+							enemy.currentRoom = null;
+							synchronized (enemy.clientOutput) {
+								enemy.clientOutput.writeUTF("LEVEL_UP " + enemy.level);
 							}
 						} catch (Exception f) {
 							f.printStackTrace();
+							System.out.println("Player " + enemy.socketID + " has disconnected");
+							server.broadcast("REMOVEPLAYER " + enemy.socketID);
+							server.broadcast("ECHO Player " + enemy.socketID + " has disconnected");
+							break;
 						}
+							enemy.ready = true;
+							server.playersWithoutRooms.add(enemy);
+							enemy.ready = false;
 					}
 				}
-				server.players.remove(player);
-				System.out.println("Player " + player.socketID + " has disconnected");
-				server.broadcast("REMOVEPLAYER " + player.socketID);
-				server.broadcast("ECHO Player " + player.socketID + " has disconnected");
 				break;
 			} 
 		}
