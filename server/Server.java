@@ -340,7 +340,7 @@ class ClientHandler extends Thread {
 					}
 					if (player.currentRoom != null) {
 						int doorID = isPlayerInDoors(player.x, player.y, player.currentDungeon);
-						if (doorID != -1) {
+						if (doorID != -1 && !player.currentRoom.areBothPlayersAliveInDungeon() && player.currentDungeon.areMonstersKilled()) {
 							if (doorID == player.currentDungeon.direction[0]) {
 								player.x = 575;
 								player.y = 150;
