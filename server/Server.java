@@ -140,15 +140,17 @@ class Room {	//room means room on the server, which contains many dungeons; each
 	}
 
 	public Room(PlayerData player1, PlayerData player2, int roomID) {
-		for (int i = 0; i < 10; ++i)
-			this.addDungeon();
+		for (int i = 0; i < 10; ++i) {
+			addDungeon();
+			if (i != 0 && i != 9)
+				dungeon.get(dungeon.size() - 1).spawnRandomMonsters();
+		}
 		players.add(player1);
 		players.get(0).currentRoom = this;
-		Random r = new Random();
 		players.get(0).currentDungeon = dungeon.get(0);
 		players.add(player2);
 		players.get(1).currentRoom = this;
-		players.get(1).currentDungeon = dungeon.get(r.nextInt(dungeon.size() - 2) + 1);
+		players.get(1).currentDungeon = dungeon.get(dungeon.size() - 1);
 		this.roomID = roomID;
 		players.get(0).procedure = 1;
 		players.get(1).procedure = 1;
@@ -173,6 +175,7 @@ class Monster {
 	public double velocity;
 	public int id;
 	public long coolDown = -1001;
+	double m = 20.0;
 
 	public Monster(int id, int x, int y, String type) {
 		this.x = x;
@@ -200,6 +203,17 @@ class Monster {
 		return false;
 	}
 
+	void move(PlayerData player) {
+		if (player.x + m > x && player.x - m > x)
+			x += velocity;
+		else if (player.x - m < x && player.x + m < x)
+			x -= velocity;
+		else if (player.y + m + 5 > y && player.y + 5 > y)
+			y += velocity;
+		else
+			y -= velocity;
+	}
+
 }
 
 
@@ -215,9 +229,30 @@ class Dungeon {
 		direction[1] = RIGHT;
 		direction[2] = UP;
 		direction[3] = DOWN;
-		monsters.add(new Monster(0, 100, 200, "FLY"));
-		//monsters.add(new Monster(1, 400, 200, "GOBLIN"));
-		//monsters.add(new Monster(2, 250, 100, "SLIME"));
+	}
+
+	public void spawnRandomMonsters() {
+		Random r = new Random();
+		int dice = r.nextInt(5);
+		if (dice == 0) {
+			monsters.add(new Monster(0, 100, 220, "FLY"));
+			monsters.add(new Monster(1, 200, 180, "FLY"));
+			monsters.add(new Monster(2, 300, 200, "FLY"));
+			monsters.add(new Monster(3, 400, 240, "FLY"));
+		} else if (dice == 1) {
+			monsters.add(new Monster(0, 400, 200, "GOBLIN"));
+			monsters.add(new Monster(1, 250, 100, "SLIME"));
+		} else if (dice == 2) {
+			monsters.add(new Monster(0, 100, 100, "FLY"));
+			monsters.add(new Monster(1, 200, 100, "GOBLIN"));
+			monsters.add(new Monster(2, 300, 100, "FLY"));
+		} else if (dice == 3) {
+			monsters.add(new Monster(0, 250, 100, "SLIME"));
+		} else if (dice == 4) {
+			monsters.add(new Monster(0, 300, 200, "SLIME"));
+			monsters.add(new Monster(1, 100, 220, "FLY"));
+			monsters.add(new Monster(2, 100, 300, "FLY"));
+		}
 	}
 
 	public boolean areMonstersKilled() {
@@ -517,8 +552,12 @@ class ClientHandler extends Thread {
 						for (Monster monster : player.currentDungeon.monsters) {
 							if (player.checkIfAttacked(monster.x, monster.y) && monster.beAttacked()) {
 								if (monster.health <= 0.0) {
-									synchronized (player.clientOutput) {
-										player.clientOutput.writeUTF("DELETE_MONSTER " + monster.id);
+									for (PlayerData enemy : player.currentRoom.players) {
+										if (player.currentDungeon == enemy.currentDungeon) {
+											synchronized (enemy.clientOutput) {
+												enemy.clientOutput.writeUTF("DELETE_MONSTER " + monster.id);
+											}
+										}
 									}
 									toDelete.add(monster);
 								}
@@ -528,6 +567,7 @@ class ClientHandler extends Thread {
 							player.currentDungeon.monsters.remove(monster);
 						for (Monster monster : player.currentDungeon.monsters) {
 							synchronized (player.clientOutput) {
+								monster.move(player);
 								player.clientOutput.writeUTF("MONSTER_UPDATE " + monster.id + " " + monster.type + " " + monster.x + " " + monster.y);
 							}
 						}
