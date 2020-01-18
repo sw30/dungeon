@@ -25,7 +25,7 @@ class PlayerData {
 	public long coolDown = -1001;
 
 	public boolean hasLost = false;
-	public boolean ready = false;
+	public int procedure = 0;
 
 
 	public PlayerData(double x, double y, String socketID, Socket socket) throws IOException {
@@ -66,6 +66,9 @@ class PlayerData {
 	}
 
 	public boolean checkIfAttacked(double x, double y) {
+		if (!(lastAttack > System.currentTimeMillis() - 300))
+			return false;
+		updateAttackXY();
 		double up = 20;
 		double down = 20;
 		double left = 15;
@@ -147,6 +150,8 @@ class Room {	//room means room on the server, which contains many dungeons; each
 		players.get(1).currentRoom = this;
 		players.get(1).currentDungeon = dungeon.get(r.nextInt(dungeon.size() - 2) + 1);
 		this.roomID = roomID;
+		players.get(0).procedure = 1;
+		players.get(1).procedure = 1;
 	}
 
 	public boolean areBothPlayersAliveInDungeon() {
@@ -167,6 +172,7 @@ class Monster {
 	public double health;
 	public double velocity;
 	public int id;
+	public long coolDown = -1001;
 
 	public Monster(int id, int x, int y, String type) {
 		this.x = x;
@@ -180,9 +186,18 @@ class Monster {
 			health = 2.0;
 			velocity = 1.5;
 		} else if (type == "SLIME") {
-			health = 4.0;
+			health = 5.0;
 			velocity = 0.75;
 		}
+	}
+
+	public boolean beAttacked() {
+		if (coolDown + 1000 < System.currentTimeMillis()) {
+			coolDown = System.currentTimeMillis();
+			health -= 0.5;
+			return true;
+		}
+		return false;
 	}
 
 }
@@ -201,8 +216,8 @@ class Dungeon {
 		direction[2] = UP;
 		direction[3] = DOWN;
 		monsters.add(new Monster(0, 100, 200, "FLY"));
-		monsters.add(new Monster(1, 400, 200, "GOBLIN"));
-		monsters.add(new Monster(2, 250, 100, "SLIME"));
+		//monsters.add(new Monster(1, 400, 200, "GOBLIN"));
+		//monsters.add(new Monster(2, 250, 100, "SLIME"));
 	}
 
 	public boolean areMonstersKilled() {
@@ -237,6 +252,17 @@ public class Server extends Thread {
 	   try {
 			server.serverSock.close();
 	   } catch (Exception e) {}
+	}
+
+	public boolean isConnected(PlayerData player) {
+		try {
+			synchronized (player.clientOutput) {
+				player.clientOutput.writeUTF("CONFIG_TEST");
+			}
+		} catch (Exception e) {
+			return false;
+		}
+		return true;
 	}
 
 	private void server() {
@@ -279,7 +305,16 @@ public class Server extends Thread {
 					for (int j = 1; j < playersWithoutRooms.size(); ++j) {
 						if (i != j) {
 							PlayerData player2 = playersWithoutRooms.get(j);
-							if (!player1.ready && player1.currentRoom == null && !player2.ready && player2.currentRoom == null) {
+							if (!isConnected(player1)) {
+								playersWithoutRooms.remove(player1);
+								players.remove(player1);
+							}
+							if (!isConnected(player2)) {
+								playersWithoutRooms.remove(player2);
+								players.remove(player2);
+								break;
+							}
+							if (player1.procedure == 0 && player1.procedure == 0) {
 								playersWithoutRooms.remove(player1);
 								playersWithoutRooms.remove(player2);
 								Room newRoom = new Room(player1, player2, roomID++);
@@ -295,6 +330,7 @@ public class Server extends Thread {
 
 	synchronized public void broadcast(String s) {
 		DataOutputStream dataOut = null;
+		List <PlayerData> toRemove = new ArrayList <PlayerData>();
 		for (PlayerData player : players) {
 			dataOut = (DataOutputStream)(player.clientOutput);
 			try { 
@@ -303,7 +339,13 @@ public class Server extends Thread {
 				}
 			} catch (IOException x) {
 				System.out.println(x.getMessage() + ": Failed to broadcast to client.");
+				toRemove.add(player);
 			}
+		}
+		for (PlayerData player : toRemove) {
+			players.remove(player);
+			broadcast("REMOVEPLAYER " + player.socketID);
+			broadcast("ECHO Player " + player.socketID + " has disconnected");
 		}
 	}
 
@@ -373,22 +415,22 @@ class ClientHandler extends Thread {
 					command = player.clientInput.readUTF();
 				}
 				//System.out.println(command);
-				if (!player.ready && command.startsWith("CONNECT")) {
+				if (player.procedure != 2 && command.startsWith("CONNECT")) {
 					while (true) {
-						if (player.currentRoom != null) {
+						if (player.procedure == 1) {
 							player.x = 300;
 							player.y = 150;
 							String id = player.socketID;
 							String x = Double.toString(player.x);
 							String y = Double.toString(player.y);
-							player.ready = true;
 							synchronized (player.clientOutput) {
 								player.clientOutput.writeUTF("CREATED " + id + " " + x + " " + y);
 							}
+							player.procedure = 2;
 							break;
 						} else Thread.sleep(100);
 					}
-				} else if (player.ready && command.startsWith("PLAYERMOVED")) {
+				} else if (player.procedure == 2 && command.startsWith("PLAYERMOVED")) {
 					String x = command.split(" ")[1];
 					String y = command.split(" ")[2];
 					player.x = validateX(Double.parseDouble(x));
@@ -396,9 +438,10 @@ class ClientHandler extends Thread {
 				} else if (command.startsWith("DISCONNECT")) {
 					System.out.println("Player " + player.socketID + " has disconnected");
 					server.broadcast("REMOVEPLAYER " + player.socketID);
+					server.players.remove(player);
 					server.broadcast("ECHO Player " + player.socketID + " has disconnected");
 					break;
-				} else if (player.ready && command.startsWith("UPDATE")) {
+				} else if (player.procedure == 2 && command.startsWith("UPDATE")) {
 					if (player.currentHealth <= 0.0) {
 						synchronized (player.clientOutput) {
 							player.clientOutput.writeUTF("LOST");
@@ -439,15 +482,14 @@ class ClientHandler extends Thread {
 									}
 									if (player != enemy) {
 										if (enemy.currentHealth <= 0.0) {
-											player.currentRoom = null;
 											player.level++;
+											player.procedure = 0;
 											synchronized (player.clientOutput) {
 												player.clientOutput.writeUTF("LEVEL_UP " + player.level);
 											}
 											server.broadcast("ECHO Player " + player.socketID + " has progressed to " + player.level + " level");
 											Thread.sleep(3000);
 											server.playersWithoutRooms.add(player);
-											player.ready = false;
 											break;
 										} else if (player.checkIfAttacked(enemy.x, enemy.y) && enemy.beAttacked()) {
 											synchronized (enemy.clientOutput) {
@@ -460,7 +502,7 @@ class ClientHandler extends Thread {
 										}
 									}
 								}
-							} else {
+							} else if (enemy.procedure == 2){
 								synchronized (enemy.clientOutput) {
 									enemy.clientOutput.writeUTF("RESET_PLAYERS");
 								}
@@ -471,12 +513,25 @@ class ClientHandler extends Thread {
 								}
 							}
 						}
+						List <Monster> toDelete = new ArrayList <Monster>();
+						for (Monster monster : player.currentDungeon.monsters) {
+							if (player.checkIfAttacked(monster.x, monster.y) && monster.beAttacked()) {
+								if (monster.health <= 0.0) {
+									synchronized (player.clientOutput) {
+										player.clientOutput.writeUTF("DELETE_MONSTER " + monster.id);
+									}
+									toDelete.add(monster);
+								}
+							}
+						}
+						for (Monster monster : toDelete)
+							player.currentDungeon.monsters.remove(monster);
 						for (Monster monster : player.currentDungeon.monsters) {
 							synchronized (player.clientOutput) {
 								player.clientOutput.writeUTF("MONSTER_UPDATE " + monster.id + " " + monster.type + " " + monster.x + " " + monster.y);
 							}
 						}
-						if (player.ready && player.currentRoom != null) {
+						if (player.currentRoom != null) {
 							synchronized (player.clientOutput) {
 								if (player.currentDungeon.areMonstersKilled() && !player.currentRoom.areBothPlayersAliveInDungeon())
 									player.clientOutput.writeUTF("ROOM_UPDATE_OPENED " + player.currentDungeon.direction[0] + " " + player.currentDungeon.direction[1] + " " +  player.currentDungeon.direction[2] + " " + player.currentDungeon.direction[3]);
@@ -485,7 +540,7 @@ class ClientHandler extends Thread {
 							}
 						}
 					}
-				} else if (player.ready && command.startsWith("ATTACK")) {
+				} else if (player.procedure == 2 && command.startsWith("ATTACK")) {
 					int direction = Integer.parseInt(command.split(" ")[1]);
 					player.attack(direction);
 					for (PlayerData enemy : player.currentRoom.players) {
@@ -501,20 +556,18 @@ class ClientHandler extends Thread {
 				if (player.currentRoom != null) {
 					for (PlayerData enemy : player.currentRoom.players) {
 						try {
-							enemy.currentRoom = null;
+							enemy.procedure = 0;
 							synchronized (enemy.clientOutput) {
 								enemy.clientOutput.writeUTF("LEVEL_UP " + enemy.level);
 							}
+							server.playersWithoutRooms.add(enemy);
 						} catch (Exception f) {
 							f.printStackTrace();
 							System.out.println("Player " + enemy.socketID + " has disconnected");
+							server.players.remove(enemy);
 							server.broadcast("REMOVEPLAYER " + enemy.socketID);
 							server.broadcast("ECHO Player " + enemy.socketID + " has disconnected");
-							break;
 						}
-							enemy.ready = true;
-							server.playersWithoutRooms.add(enemy);
-							enemy.ready = false;
 					}
 				}
 				break;
