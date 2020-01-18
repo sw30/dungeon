@@ -176,6 +176,12 @@ class Monster {
 		if (type == "FLY") {
 			health = 1.0;
 			velocity = 3.0;
+		} else if (type == "GOBLIN") {
+			health = 2.0;
+			velocity = 1.5;
+		} else if (type == "SLIME") {
+			health = 4.0;
+			velocity = 0.75;
 		}
 	}
 
@@ -195,8 +201,8 @@ class Dungeon {
 		direction[2] = UP;
 		direction[3] = DOWN;
 		monsters.add(new Monster(0, 100, 200, "FLY"));
-		monsters.add(new Monster(1, 400, 200, "FLY"));
-		monsters.add(new Monster(2, 250, 100, "FLY"));
+		monsters.add(new Monster(1, 400, 200, "GOBLIN"));
+		monsters.add(new Monster(2, 250, 100, "SLIME"));
 	}
 
 	public boolean areMonstersKilled() {
@@ -415,6 +421,9 @@ class ClientHandler extends Thread {
 							} else {
 								player.x = 300;
 								player.y = 305;
+							}
+							synchronized (player.clientOutput) {
+								player.clientOutput.writeUTF("RESET_MONSTERS");
 							}
 							player.currentDungeon = player.currentRoom.dungeon.get(doorID);
 						}
