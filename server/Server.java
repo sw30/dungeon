@@ -220,7 +220,7 @@ class Monster {
 			if (player.y - 10 < y && y < player.y + 20) {
 				player.beAttacked();
 				synchronized (player.clientOutput) {
-					player.clientOutput.writeUTF("HEALTH_UPDATE " + player.currentHealth);
+					player.clientOutput.writeUTF("HEALTH_UPDATE " + player.currentHealth + " " + player.maxHealth);
 					player.clientOutput.writeUTF("CHANGE_SPRITE " + player.socketID);
 				}
 			}
@@ -350,13 +350,14 @@ public class Server extends Thread {
 			if (playersWithoutRooms.size() >= 2) {
 				for (int i = 0; i < playersWithoutRooms.size(); ++i) {
 					PlayerData player1 = playersWithoutRooms.get(i);
+					if (!isConnected(player1)) {
+						playersWithoutRooms.remove(player1);
+						players.remove(player1);
+						break;
+					}
 					for (int j = 1; j < playersWithoutRooms.size(); ++j) {
 						if (i != j) {
 							PlayerData player2 = playersWithoutRooms.get(j);
-							if (!isConnected(player1)) {
-								playersWithoutRooms.remove(player1);
-								players.remove(player1);
-							}
 							if (!isConnected(player2)) {
 								playersWithoutRooms.remove(player2);
 								players.remove(player2);
@@ -541,7 +542,7 @@ class ClientHandler extends Thread {
 									break;
 								} else if (player.currentDungeon == enemy.currentDungeon && player.checkIfAttacked(enemy.x, enemy.y) && enemy.beAttacked()) {
 									synchronized (enemy.clientOutput) {
-										enemy.clientOutput.writeUTF("HEALTH_UPDATE " + enemy.currentHealth);
+										enemy.clientOutput.writeUTF("HEALTH_UPDATE " + enemy.currentHealth + " " + enemy.maxHealth);
 										enemy.clientOutput.writeUTF("CHANGE_SPRITE " + enemy.socketID);
 									}
 									synchronized (player.clientOutput) {
