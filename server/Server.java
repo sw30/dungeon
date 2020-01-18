@@ -14,8 +14,8 @@ class PlayerData {
 	public Dungeon currentDungeon = null;
 
 	public double attackRange = 20;
-	public double maxHealth = 3.0;
-	public double currentHealth = 3.0;
+	public double maxHealth = 6.0;
+	public double currentHealth = 6.0;
 	public int level = 0;
 
 	public long lastAttack = -100;
@@ -203,15 +203,28 @@ class Monster {
 		return false;
 	}
 
-	void move(PlayerData player) {
+	void move(PlayerData player) throws IOException {
 		if (player.x + m > x && player.x - m > x)
 			x += velocity;
-		else if (player.x - m < x && player.x + m < x)
+		if (player.x - m < x && player.x + m < x)
 			x -= velocity;
-		else if (player.y + m + 5 > y && player.y + 5 > y)
+		if (player.y + m + 5 > y && player.y + 5 > y)
 			y += velocity;
-		else
+		if (player.y - m - 5 < y && player.y - 5 < y)
 			y -= velocity;
+		attack(player);
+	}
+
+	void attack(PlayerData player) throws IOException {
+		if (player.x - 25 < x && x < player.x + 30) {
+			if (player.y - 10 < y && y < player.y + 20) {
+				player.beAttacked();
+				synchronized (player.clientOutput) {
+					player.clientOutput.writeUTF("HEALTH_UPDATE " + player.currentHealth);
+					player.clientOutput.writeUTF("CHANGE_SPRITE " + player.socketID);
+				}
+			}
+		}
 	}
 
 }
@@ -477,13 +490,6 @@ class ClientHandler extends Thread {
 					server.broadcast("ECHO Player " + player.socketID + " has disconnected");
 					break;
 				} else if (player.procedure == 2 && command.startsWith("UPDATE")) {
-					if (player.currentHealth <= 0.0) {
-						synchronized (player.clientOutput) {
-							player.clientOutput.writeUTF("LOST");
-						}
-						player.hasLost = true;
-						server.players.remove(player);
-					}
 					if (player.currentRoom != null) {
 						int doorID = isPlayerInDoors(player.x, player.y, player.currentDungeon);
 						if (doorID != -1 && !player.currentRoom.areBothPlayersAliveInDungeon() && player.currentDungeon.areMonstersKilled()) {
@@ -515,38 +521,46 @@ class ClientHandler extends Thread {
 									synchronized (enemy.clientOutput) {
 										enemy.clientOutput.writeUTF("DRAW_ATTACK " + player.attackX + " " + player.attackY);
 									}
-									if (player != enemy) {
-										if (enemy.currentHealth <= 0.0) {
-											player.level++;
-											player.procedure = 0;
-											synchronized (player.clientOutput) {
-												player.clientOutput.writeUTF("LEVEL_UP " + player.level);
-											}
-											server.broadcast("ECHO Player " + player.socketID + " has progressed to " + player.level + " level");
-											Thread.sleep(3000);
-											server.playersWithoutRooms.add(player);
-											break;
-										} else if (player.checkIfAttacked(enemy.x, enemy.y) && enemy.beAttacked()) {
-											synchronized (enemy.clientOutput) {
-												enemy.clientOutput.writeUTF("HEALTH_UPDATE " + enemy.currentHealth);
-												enemy.clientOutput.writeUTF("CHANGE_SPRITE " + enemy.socketID);
-											}
-											synchronized (player.clientOutput) {
-												player.clientOutput.writeUTF("CHANGE_SPRITE " + enemy.socketID);
-											}
-										}
-									}
 								}
 							} else if (enemy.procedure == 2){
 								synchronized (enemy.clientOutput) {
 									enemy.clientOutput.writeUTF("RESET_PLAYERS");
 								}
 							}
-							if (enemy.coolDown + 1000 < System.currentTimeMillis()) {
+							if (player != enemy) {
+								if (enemy.currentHealth <= 0.0) {
+									player.level++;
+									player.procedure = 0;
+									player.currentDungeon.monsters.clear();
+									synchronized (player.clientOutput) {
+										player.clientOutput.writeUTF("LEVEL_UP " + player.level);
+									}
+									server.broadcast("ECHO Player " + player.socketID + " has progressed to " + player.level + " level");
+									Thread.sleep(3000);
+									server.playersWithoutRooms.add(player);
+									break;
+								} else if (player.currentDungeon == enemy.currentDungeon && player.checkIfAttacked(enemy.x, enemy.y) && enemy.beAttacked()) {
+									synchronized (enemy.clientOutput) {
+										enemy.clientOutput.writeUTF("HEALTH_UPDATE " + enemy.currentHealth);
+										enemy.clientOutput.writeUTF("CHANGE_SPRITE " + enemy.socketID);
+									}
+									synchronized (player.clientOutput) {
+										player.clientOutput.writeUTF("CHANGE_SPRITE " + enemy.socketID);
+									}
+								}
+							}
+							if (player.currentDungeon == enemy.currentDungeon && enemy.coolDown + 1000 < System.currentTimeMillis()) {
 								synchronized (player.clientOutput) {
 									player.clientOutput.writeUTF("RESET_SPRITE " + enemy.socketID);
 								}
 							}
+						}
+						if (player.currentHealth <= 0.0) {
+							synchronized (player.clientOutput) {
+								player.clientOutput.writeUTF("LOST");
+							}
+							player.hasLost = true;
+							server.players.remove(player);
 						}
 						List <Monster> toDelete = new ArrayList <Monster>();
 						for (Monster monster : player.currentDungeon.monsters) {
@@ -597,6 +611,7 @@ class ClientHandler extends Thread {
 					for (PlayerData enemy : player.currentRoom.players) {
 						try {
 							enemy.procedure = 0;
+							enemy.currentDungeon.monsters.clear();
 							synchronized (enemy.clientOutput) {
 								enemy.clientOutput.writeUTF("LEVEL_UP " + enemy.level);
 							}
