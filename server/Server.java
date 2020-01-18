@@ -23,6 +23,9 @@ class PlayerData {
 	public double attackY;
 	public int lastDirection;
 	public long coolDown = -1001;
+	public int shield = 0;
+	public boolean sharpness = false;
+	public long sharpnessLifeTime = -30001;
 
 	public boolean hasLost = false;
 	public int procedure = 0;
@@ -66,7 +69,7 @@ class PlayerData {
 	}
 
 	public boolean checkIfAttacked(double x, double y) {
-		if (!(lastAttack > System.currentTimeMillis() - 300))
+		if (!(lastAttack > System.currentTimeMillis() - 100))
 			return false;
 		updateAttackXY();
 		double up = 20;
@@ -74,7 +77,7 @@ class PlayerData {
 		double left = 15;
 		double right = 15;
 		if (lastDirection == 0) {
-			if (x >= attackX - attackRange && x <= attackX && y <= attackY + down && y >= attackY - up)
+			if (x + left >= attackX - attackRange && x <= attackX && y <= attackY + down && y >= attackY - up)
 				return true;
 		} else if (lastDirection == 1) {
 			if (x >= attackX && x <= attackX + attackRange && y <= attackY + down && y >= attackY - up)
@@ -89,10 +92,16 @@ class PlayerData {
 		return false;
 	}
 
-	public boolean beAttacked() {
+	public boolean beAttacked(PlayerData player) {
 		if (coolDown + 1000 < System.currentTimeMillis()) {
 			coolDown = System.currentTimeMillis();
-			currentHealth -= 0.5;
+			if (shield <= 0) {
+				if (player != null && player.sharpness)
+					currentHealth -= 1.0;
+				else
+					currentHealth -= 0.5;
+				shield = 0;
+			} else shield--;
 			return true;
 		}
 		return false;
@@ -183,21 +192,24 @@ class Monster {
 		this.type = type;
 		this.id = id;
 		if (type == "FLY") {
-			health = 1.0;
-			velocity = 3.0;
+			health = 0.5;
+			velocity = 2.5;
 		} else if (type == "GOBLIN") {
 			health = 2.0;
-			velocity = 1.5;
+			velocity = 1;
 		} else if (type == "SLIME") {
 			health = 5.0;
-			velocity = 0.75;
+			velocity = 0.5;
 		}
 	}
 
-	public boolean beAttacked() {
+	public boolean beAttacked(PlayerData player) {
 		if (coolDown + 1000 < System.currentTimeMillis()) {
 			coolDown = System.currentTimeMillis();
-			health -= 0.5;
+			if (player != null && player.sharpness)
+				health -= 1.0;
+			else
+				health -= 0.5;
 			return true;
 		}
 		return false;
@@ -218,7 +230,7 @@ class Monster {
 	void attack(PlayerData player) throws IOException {
 		if (player.x - 25 < x && x < player.x + 30) {
 			if (player.y - 10 < y && y < player.y + 20) {
-				player.beAttacked();
+				player.beAttacked(null);
 				synchronized (player.clientOutput) {
 					player.clientOutput.writeUTF("HEALTH_UPDATE " + player.currentHealth + " " + player.maxHealth);
 					player.clientOutput.writeUTF("CHANGE_SPRITE " + player.socketID);
@@ -235,6 +247,8 @@ class Dungeon {
 	List<Monster> monsters = new ArrayList<Monster>();
 	public int direction[] = new int[4];
 						//LEFT, RIGHT, UP, DOWN
+	public boolean wasEmpty = true;
+	public boolean wasRewarded = false;
 	
 	public Dungeon(int ID, int LEFT, int RIGHT, int UP, int DOWN) {
 		this.ID = ID;
@@ -266,6 +280,7 @@ class Dungeon {
 			monsters.add(new Monster(1, 100, 220, "FLY"));
 			monsters.add(new Monster(2, 100, 300, "FLY"));
 		}
+		wasEmpty = false;
 	}
 
 	public boolean areMonstersKilled() {
@@ -475,6 +490,8 @@ class ClientHandler extends Thread {
 							synchronized (player.clientOutput) {
 								player.clientOutput.writeUTF("CREATED " + id + " " + x + " " + y);
 							}
+							if (player.sharpness)
+								player.sharpnessLifeTime = System.currentTimeMillis();
 							player.procedure = 2;
 							break;
 						} else Thread.sleep(100);
@@ -494,6 +511,8 @@ class ClientHandler extends Thread {
 					if (player.currentRoom != null) {
 						int doorID = isPlayerInDoors(player.x, player.y, player.currentDungeon);
 						if (doorID != -1 && !player.currentRoom.areBothPlayersAliveInDungeon() && player.currentDungeon.areMonstersKilled()) {
+							if (player.sharpness == true && player.sharpnessLifeTime + 30000 > System.currentTimeMillis())
+								player.sharpness = false;
 							if (doorID == player.currentDungeon.direction[0]) {
 								player.x = 575;
 								player.y = 150;
@@ -511,13 +530,42 @@ class ClientHandler extends Thread {
 								player.clientOutput.writeUTF("RESET_MONSTERS");
 							}
 							player.currentDungeon = player.currentRoom.dungeon.get(doorID);
+						} else if (!player.currentRoom.areBothPlayersAliveInDungeon() && player.currentDungeon.areMonstersKilled() && !player.currentDungeon.wasEmpty && !player.currentDungeon.wasRewarded) {
+							player.currentDungeon.wasRewarded = true;
+							String rewards[] = {"Heart container", "Half heart container", "Bandage", "Weird potion", "Knife sharpener"};
+							String descriptions[] = {"+1.0 health", "+0.5 health", "Full health", "Unknown", "Temporary DMG UP"};
+							Random r = new Random();
+							int randomValue = r.nextInt(rewards.length * 2);
+							if (randomValue < rewards.length)
+								synchronized(player.clientOutput) {
+									player.clientOutput.writeUTF("NEW_ITEM\t" + rewards[randomValue] + "\t" + descriptions[randomValue]);
+								}
+							if (randomValue == 0) 		player.currentHealth = player.currentHealth + 1.0 % player.maxHealth;
+							else if (randomValue == 1)	player.currentHealth = player.currentHealth + 0.5 % player.maxHealth;
+							else if (randomValue == 2 && player.currentHealth < player.maxHealth)	player.currentHealth = player.maxHealth;
+							else if (randomValue == 3) {
+								int secondRandom = r.nextInt(6);
+								if (secondRandom == 0)		player.currentHealth += 0.5;
+								else if (secondRandom == 1)	player.maxHealth += 0.5;
+								else if (secondRandom == 2)	player.attackRange *= 1.1;
+								else if (secondRandom == 3 && player.attackRange > 15)	player.attackRange *= 0.9;
+							} else if (randomValue == 4) {
+								player.sharpness = true;
+								player.sharpnessLifeTime = System.currentTimeMillis();
+							}
+							if (randomValue < rewards.length)
+								synchronized (player.clientOutput) {
+									player.clientOutput.writeUTF("HEALTH_UPDATE " + player.currentHealth + " " + player.maxHealth);
+								}
+
+
 						}
 						for (PlayerData enemy : player.currentRoom.players) {
 							if (player.currentDungeon == enemy.currentDungeon) {
 								synchronized (player.clientOutput) {
 									player.clientOutput.writeUTF("PLAYER_UPDATE " + enemy.socketID + " " + Double.toString(enemy.x) + " " + Double.toString(enemy.y));
 								}
-								if (player.lastAttack > System.currentTimeMillis() - 300 && player.currentDungeon == enemy.currentDungeon) {
+								if (player.lastAttack > System.currentTimeMillis() - 100 && player.currentDungeon == enemy.currentDungeon) {
 									player.updateAttackXY();
 									synchronized (enemy.clientOutput) {
 										enemy.clientOutput.writeUTF("DRAW_ATTACK " + player.attackX + " " + player.attackY);
@@ -536,11 +584,33 @@ class ClientHandler extends Thread {
 									synchronized (player.clientOutput) {
 										player.clientOutput.writeUTF("LEVEL_UP " + player.level);
 									}
+									Random r = new Random();
+									String rewards[] = {"Small shield", "Medium shield", "Great shield", "Helmet pilow", "Better armor", "Magic book", "Spear", "Sharp sword"};
+									String descriptions[] = {"+1 shield", "+3 shield", "+5 shield", "HP UP", "HP UP", "High range", "Medium range", "Temporary DMG UP, small range"}; 
+									int randomValue = r.nextInt(rewards.length);
+									if (randomValue == 0) 		player.shield++;
+									else if (randomValue == 1)	player.shield += 3;
+									else if (randomValue == 2)	player.shield += 5;
+									else if (randomValue == 3 || randomValue == 4) {
+										player.maxHealth += 1.0;
+										player.currentHealth += 1.0;
+										synchronized (player.clientOutput) {
+											player.clientOutput.writeUTF("HEALTH_UPDATE " + player.currentHealth + " " + player.maxHealth);
+										}
+									} else if (randomValue == 5) player.attackRange = 50;
+									else if (randomValue == 6)	player.attackRange = 35;
+									else if (randomValue == 7) {
+										player.attackRange = 25;
+										player.sharpness = true;
+									}
+									synchronized (player.clientOutput) {
+										player.clientOutput.writeUTF("NEW_ITEM\t" + rewards[randomValue] + "\t" + descriptions[randomValue]);
+									}
 									server.broadcast("ECHO Player " + player.socketID + " has progressed to " + player.level + " level");
 									Thread.sleep(3000);
 									server.playersWithoutRooms.add(player);
 									break;
-								} else if (player.currentDungeon == enemy.currentDungeon && player.checkIfAttacked(enemy.x, enemy.y) && enemy.beAttacked()) {
+								} else if (player.currentDungeon == enemy.currentDungeon && player.checkIfAttacked(enemy.x, enemy.y) && enemy.beAttacked(player)) {
 									synchronized (enemy.clientOutput) {
 										enemy.clientOutput.writeUTF("HEALTH_UPDATE " + enemy.currentHealth + " " + enemy.maxHealth);
 										enemy.clientOutput.writeUTF("CHANGE_SPRITE " + enemy.socketID);
@@ -565,7 +635,7 @@ class ClientHandler extends Thread {
 						}
 						List <Monster> toDelete = new ArrayList <Monster>();
 						for (Monster monster : player.currentDungeon.monsters) {
-							if (player.checkIfAttacked(monster.x, monster.y) && monster.beAttacked()) {
+							if (player.checkIfAttacked(monster.x, monster.y) && monster.beAttacked(player)) {
 								if (monster.health <= 0.0) {
 									for (PlayerData enemy : player.currentRoom.players) {
 										if (player.currentDungeon == enemy.currentDungeon) {
