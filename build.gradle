@@ -68,3 +68,7 @@ project(":core") {
 		api "io.socket:socket.io-client:0.6.2"
 	}
 }
+
+dependencies {
+    implementation 'org.junit.jupiter:junit-jupiter-api'
+}

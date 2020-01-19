@@ -3,300 +3,6 @@ import java.net.*;
 import java.util.*;
 
 
-class PlayerData {
-	public double x;
-	public double y;
-	public String socketID;
-	public Socket socket;
-	public DataOutputStream clientOutput;
-	public DataInputStream clientInput;
-	public Room currentRoom = null;
-	public Dungeon currentDungeon = null;
-
-	public double attackRange = 20;
-	public double maxHealth = 6.0;
-	public double currentHealth = 6.0;
-	public int level = 0;
-
-	public long lastAttack = -100;
-	public double attackX;
-	public double attackY;
-	public int lastDirection;
-	public long coolDown = -1001;
-	public int shield = 0;
-	public boolean sharpness = false;
-	public long sharpnessLifeTime = -30001;
-
-	public boolean hasLost = false;
-	public int procedure = 0;
-
-
-	public PlayerData(double x, double y, String socketID, Socket socket) throws IOException {
-		this.x = x;
-		this.y = y;
-		this.socketID = socketID;
-		this.socket = socket;
-		clientOutput = new DataOutputStream(socket.getOutputStream());
-		clientInput = new DataInputStream(socket.getInputStream());
-	}
-
-	public void attack(int direction) {
-		lastDirection = direction;
-		lastAttack = System.currentTimeMillis();
-		attackX = x;
-		attackY = y;
-		if (direction == 0)
-			attackX -= attackRange;
-		else if (direction == 1)
-			attackX += attackRange;
-		else if (direction == 2) 
-			attackY += attackRange;
-		else if (direction == 3)
-			attackY -= attackRange;
-	}
-
-	public void updateAttackXY() {
-		attackX = x;
-		attackY = y;
-		if (lastDirection == 0)
-			attackX -= attackRange;
-		else if (lastDirection == 1)
-			attackX += attackRange;
-		else if (lastDirection == 2) 
-			attackY += attackRange;
-		else if (lastDirection == 3)
-			attackY -= attackRange;
-	}
-
-	public boolean checkIfAttacked(double x, double y) {
-		if (!(lastAttack > System.currentTimeMillis() - 100))
-			return false;
-		updateAttackXY();
-		double up = 20;
-		double down = 20;
-		double left = 15;
-		double right = 15;
-		if (lastDirection == 0) {
-			if (x + left >= attackX - attackRange && x <= attackX && y <= attackY + down && y >= attackY - up)
-				return true;
-		} else if (lastDirection == 1) {
-			if (x >= attackX && x <= attackX + attackRange && y <= attackY + down && y >= attackY - up)
-				return true;
-		} else if (lastDirection == 2) {
-			if (y >= attackY && y <= attackY + attackRange && x <= attackX + left && x >= attackX - right)
-				return true;
-		} else if (lastDirection == 3) {
-			if (y >= attackY - attackRange && y <= attackY && x <= attackX + left && x >= attackX - right)
-				return true;
-		}
-		return false;
-	}
-
-	public boolean beAttacked(PlayerData player) {
-		if (coolDown + 1000 < System.currentTimeMillis()) {
-			coolDown = System.currentTimeMillis();
-			if (shield <= 0) {
-				if (player != null && player.sharpness)
-					currentHealth -= 1.0;
-				else
-					currentHealth -= 0.5;
-				shield = 0;
-			} else shield--;
-			return true;
-		}
-		return false;
-	}
-}
-
-
-class Room {	//room means room on the server, which contains many dungeons; each dungeon is just a room inside a room
-
-	List<PlayerData> players = new ArrayList<PlayerData>();
-	int roomID;
-	List<Dungeon> dungeon = new ArrayList<Dungeon>();
-	PlayerData loser = null;
-	PlayerData winner = null;
-
-	public void addDungeon() {
-		if (dungeon.size() == 0)
-			dungeon.add(new Dungeon(0, -1, -1, -1, -1));
-		else {
-			Random r = new Random();
-			int newID = dungeon.size();
-			int id = r.nextInt(newID);
-			while (!dungeon.get(id).areAvailableDoors()) {
-				id++;
-				id = id % newID;
-			}
-			int direction = r.nextInt(4);
-			while (dungeon.get(id).direction[direction] != -1) {
-				direction++;
-				direction = direction % 4;
-			}
-			dungeon.get(id).direction[direction] = newID;
-			int LEFT = -1, RIGHT = -1, UP = -1, DOWN = -1;
-			if (direction == 0)
-				RIGHT = id;
-			else if (direction == 1)
-				LEFT = id;
-			else if (direction == 2)
-				DOWN = id;
-			else if (direction == 3)
-				UP = id;
-			Dungeon newDungeon = new Dungeon(newID, LEFT, RIGHT, UP, DOWN);	
-			dungeon.add(newDungeon);
-		}
-	}
-
-	public Room(PlayerData player1, PlayerData player2, int roomID) {
-		for (int i = 0; i < 10; ++i) {
-			addDungeon();
-			if (i != 0 && i != 9)
-				dungeon.get(dungeon.size() - 1).spawnRandomMonsters();
-		}
-		players.add(player1);
-		players.get(0).currentRoom = this;
-		players.get(0).currentDungeon = dungeon.get(0);
-		players.add(player2);
-		players.get(1).currentRoom = this;
-		players.get(1).currentDungeon = dungeon.get(dungeon.size() - 1);
-		this.roomID = roomID;
-		players.get(0).procedure = 1;
-		players.get(1).procedure = 1;
-	}
-
-	public boolean areBothPlayersAliveInDungeon() {
-		if (players.size() != 2)
-			return false;
-		if (players.get(0).currentDungeon == players.get(1).currentDungeon && players.get(0).currentHealth > 0 && players.get(1).currentHealth > 0)
-			return true;
-		return false;
-	}
-
-}
-
-
-class Monster {
-	public double x;
-	public double y;
-	public String type;
-	public double health;
-	public double velocity;
-	public int id;
-	public long coolDown = -1001;
-	double m = 20.0;
-
-	public Monster(int id, int x, int y, String type) {
-		this.x = x;
-		this.y = y;
-		this.type = type;
-		this.id = id;
-		if (type == "FLY") {
-			health = 0.5;
-			velocity = 2.5;
-		} else if (type == "GOBLIN") {
-			health = 2.0;
-			velocity = 1;
-		} else if (type == "SLIME") {
-			health = 5.0;
-			velocity = 0.5;
-		}
-	}
-
-	public boolean beAttacked(PlayerData player) {
-		if (coolDown + 1000 < System.currentTimeMillis()) {
-			coolDown = System.currentTimeMillis();
-			if (player != null && player.sharpness)
-				health -= 1.0;
-			else
-				health -= 0.5;
-			return true;
-		}
-		return false;
-	}
-
-	void move(PlayerData player) throws IOException {
-		if (player.x + m > x && player.x - m > x)
-			x += velocity;
-		if (player.x - m < x && player.x + m < x)
-			x -= velocity;
-		if (player.y + m + 5 > y && player.y + 5 > y)
-			y += velocity;
-		if (player.y - m - 5 < y && player.y - 5 < y)
-			y -= velocity;
-		attack(player);
-	}
-
-	void attack(PlayerData player) throws IOException {
-		if (player.x - 25 < x && x < player.x + 30) {
-			if (player.y - 10 < y && y < player.y + 20) {
-				player.beAttacked(null);
-				synchronized (player.clientOutput) {
-					player.clientOutput.writeUTF("HEALTH_UPDATE " + player.currentHealth + " " + player.maxHealth);
-					player.clientOutput.writeUTF("CHANGE_SPRITE " + player.socketID);
-				}
-			}
-		}
-	}
-
-}
-
-
-class Dungeon {
-	int ID;
-	List<Monster> monsters = new ArrayList<Monster>();
-	public int direction[] = new int[4];
-						//LEFT, RIGHT, UP, DOWN
-	public boolean wasEmpty = true;
-	public boolean wasRewarded = false;
-	
-	public Dungeon(int ID, int LEFT, int RIGHT, int UP, int DOWN) {
-		this.ID = ID;
-		direction[0] = LEFT;
-		direction[1] = RIGHT;
-		direction[2] = UP;
-		direction[3] = DOWN;
-	}
-
-	public void spawnRandomMonsters() {
-		Random r = new Random();
-		int dice = r.nextInt(5);
-		if (dice == 0) {
-			monsters.add(new Monster(0, 100, 220, "FLY"));
-			monsters.add(new Monster(1, 200, 180, "FLY"));
-			monsters.add(new Monster(2, 300, 200, "FLY"));
-			monsters.add(new Monster(3, 400, 240, "FLY"));
-		} else if (dice == 1) {
-			monsters.add(new Monster(0, 400, 200, "GOBLIN"));
-			monsters.add(new Monster(1, 250, 100, "SLIME"));
-		} else if (dice == 2) {
-			monsters.add(new Monster(0, 100, 100, "FLY"));
-			monsters.add(new Monster(1, 200, 100, "GOBLIN"));
-			monsters.add(new Monster(2, 300, 100, "FLY"));
-		} else if (dice == 3) {
-			monsters.add(new Monster(0, 250, 100, "SLIME"));
-		} else if (dice == 4) {
-			monsters.add(new Monster(0, 300, 200, "SLIME"));
-			monsters.add(new Monster(1, 100, 220, "FLY"));
-			monsters.add(new Monster(2, 100, 300, "FLY"));
-		}
-		wasEmpty = false;
-	}
-
-	public boolean areMonstersKilled() {
-		if (monsters.size() == 0)
-			return true;
-		return false;
-	}
-
-	public boolean areAvailableDoors() {
-		for (int i = 0; i < 4; ++i)
-			if (direction[i] == -1)
-				return true;
-		return false;
-	}
-}
-
 
 public class Server extends Thread {
 	private int port = 8080;
@@ -307,6 +13,7 @@ public class Server extends Thread {
 	List<PlayerData> players = new ArrayList<PlayerData>();
 	List<PlayerData> playersWithoutRooms = new ArrayList<PlayerData>();
 
+
 	public static void main(String args[]) {
 	   System.out.println("Hit control-c to exit the server.");
 	   Server server = new Server();
@@ -316,6 +23,7 @@ public class Server extends Thread {
 			server.serverSock.close();
 	   } catch (Exception e) {}
 	}
+
 
 	public boolean isConnected(PlayerData player) {
 		try {
@@ -328,7 +36,7 @@ public class Server extends Thread {
 		return true;
 	}
 
-	private void server() {
+	public void server() {
 		try {
 			InetAddress serverAddr = InetAddress.getByName(null);            
 	   		serverSock = new ServerSocket(port);
@@ -345,7 +53,7 @@ public class Server extends Thread {
 				PlayerData newPlayer = new PlayerData(300, 150, Integer.toString(ID), socket);
 				players.add(newPlayer);
 				playersWithoutRooms.add(newPlayer);
-				System.out.println("Player " + Integer.toString(ID) + " connected");
+				System.out.println("Player " + ID + " connected");
 				ID++;
 				ClientHandler newHandler = new ClientHandler(newPlayer, this);
 				newHandler.start();
