@@ -1,7 +1,7 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
-
+import java.util.concurrent.CopyOnWriteArrayList;
 
 
 public class Server extends Thread {
@@ -10,8 +10,8 @@ public class Server extends Thread {
 	int ID = 0;
 	int roomID = 0;
 	
-	List<PlayerData> players = new ArrayList<PlayerData>();
-	List<PlayerData> playersWithoutRooms = new ArrayList<PlayerData>();
+	List<PlayerData> players = new CopyOnWriteArrayList<PlayerData>();
+	List<PlayerData> playersWithoutRooms = new CopyOnWriteArrayList<PlayerData>();
 
 
 	public static void main(String args[]) {
@@ -25,6 +25,13 @@ public class Server extends Thread {
 	}
 
 
+	/**
+	 * Function checks if the player is connected to the server by sending "CONFIG_TEST" message to him.
+	 * If player can't read it, function will return false
+	 * @param player - player to check connection
+	 *
+	 * @return true or false depending on being connected or not
+	 */
 	public boolean isConnected(PlayerData player) {
 		try {
 			synchronized (player.clientOutput) {
@@ -36,6 +43,11 @@ public class Server extends Thread {
 		return true;
 	}
 
+
+	/**
+	 * Method with never ending loop, which purpose is to accept clients.
+	 * Accepted client is added to a queue
+	 */
 	public void server() {
 		try {
 			InetAddress serverAddr = InetAddress.getByName(null);            
@@ -219,7 +231,7 @@ class ClientHandler extends Thread {
 					if (player.currentRoom != null) {
 						int doorID = isPlayerInDoors(player.x, player.y, player.currentDungeon);
 						if (doorID != -1 && !player.currentRoom.areBothPlayersAliveInDungeon() && player.currentDungeon.areMonstersKilled()) {
-							if (player.sharpness == true && player.sharpnessLifeTime + 30000 > System.currentTimeMillis())
+							if (player.sharpness == true && player.sharpnessLifeTime + 30000 < System.currentTimeMillis())
 								player.sharpness = false;
 							if (doorID == player.currentDungeon.direction[0]) {
 								player.x = 575;
@@ -248,8 +260,8 @@ class ClientHandler extends Thread {
 								synchronized(player.clientOutput) {
 									player.clientOutput.writeUTF("NEW_ITEM\t" + rewards[randomValue] + "\t" + descriptions[randomValue]);
 								}
-							if (randomValue == 0) 		player.currentHealth = player.currentHealth + 1.0 % player.maxHealth;
-							else if (randomValue == 1)	player.currentHealth = player.currentHealth + 0.5 % player.maxHealth;
+							if (randomValue == 0 && player.currentHealth < player.maxHealth) 	player.currentHealth += 1.0;
+							else if (randomValue == 1 && player.currentHealth < player.maxHealth)	player.currentHealth += 0.5;
 							else if (randomValue == 2 && player.currentHealth < player.maxHealth)	player.currentHealth = player.maxHealth;
 							else if (randomValue == 3) {
 								int secondRandom = r.nextInt(6);
@@ -310,6 +322,7 @@ class ClientHandler extends Thread {
 									else if (randomValue == 7) {
 										player.attackRange = 25;
 										player.sharpness = true;
+										player.sharpnessLifeTime = System.currentTimeMillis();
 									}
 									synchronized (player.clientOutput) {
 										player.clientOutput.writeUTF("NEW_ITEM\t" + rewards[randomValue] + "\t" + descriptions[randomValue]);
