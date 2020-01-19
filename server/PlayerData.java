@@ -31,6 +31,14 @@ public class PlayerData {
 	public int procedure = 0;
 
 
+	/**
+	 * Collects information about player in the server
+	 * @param x
+	 * @param y
+	 * @param socketID - should be unique in the whole server
+	 * @param socket
+	 * @throws IOException
+	 */
 	public PlayerData(double x, double y, String socketID, Socket socket) throws IOException {
 		this.x = x;
 		this.y = y;
@@ -40,6 +48,10 @@ public class PlayerData {
 		clientInput = new DataInputStream(socket.getInputStream());
 	}
 
+	/**
+	 * Collects information to let client draw attack
+	 * @param direction: 0 - LEFT, 1 - RIGHT, 2 - UP, 3 - DOWN
+	 */
 	public void attack(int direction) {
 		lastDirection = direction;
 		lastAttack = System.currentTimeMillis();
@@ -55,6 +67,9 @@ public class PlayerData {
 			attackY -= attackRange;
 	}
 
+	/**
+	 * Method should be called anytime player moves to let his attack be drawn everywhere he moves
+	 */
 	public void updateAttackXY() {
 		attackX = x;
 		attackY = y;
@@ -68,6 +83,12 @@ public class PlayerData {
 			attackY -= attackRange;
 	}
 
+	/**
+	 * Literally checks if player on (x, y) is attacked
+	 * @param x - player's x who is supposed to be attacked
+	 * @param y - player's y
+	 * @return true if player is attacked and false if not
+	 */
 	public boolean checkIfAttacked(double x, double y) {
 		if (!(lastAttack > System.currentTimeMillis() - 100))
 			return false;
@@ -92,6 +113,11 @@ public class PlayerData {
 		return false;
 	}
 
+	/**
+	 * Makes player in the parameter attacked
+	 * @param player - player to be attacked
+	 * @return true on success or false
+	 */
 	public boolean beAttacked(PlayerData player) {
 		if (coolDown + 1000 < System.currentTimeMillis()) {
 			coolDown = System.currentTimeMillis();

@@ -76,6 +76,9 @@ public class DungeonClient extends Game {
 		serverListener.start();
 	}
 
+	/**
+	 * Creates server's socket
+	 */
 	public void connectSocket() {
 		System.out.println("Connecting to: " + HOST + ", port: " + PORT + "...");
 		try {
@@ -123,6 +126,26 @@ class ServerListener extends Thread {
 		this.client = client;
 	}
 
+	/**
+	 * Listens for player's commands
+	 * Reacts on such commands:
+	 * PLAYER_UPDATE - gets information about player's location
+	 * CREATED - gets information that player is ready to play and map can be displayed
+	 * REMOVEPLAYER - removes player from an array of players
+	 * ROOM_UPDATE_CLOSED - updates information about dungeon's room, doesn't let player come through the closed doors
+	 * ROOM_UPDATE_OPENED - updates information about dungeon's room, lets player come through opened doors
+	 * RESET_PLAYERS - deletes all players from players' array
+	 * DRAW_ATTACK - sends information to let client draw attacks
+	 * CHANGE_SPRITE - tells client to change player's or opponent's sprite to one indicating taking damage
+	 * RESET_SPRITE - tells client to bring player's or opponent's sprite back to normal
+	 * LEVEL_UP - increases level and makes player wait for a new opponent
+	 * LOST - informs player that they lost the game
+	 * ECHO - sends notification supposed to be shown on the screen
+	 * MONSTER_UPDATE - sends information about each monster in the current dungeon's room
+	 * RESET_MONSTER - removes all monsters from screen
+	 * REMOVE_MONSTER - removes a single monster from screen
+	 * CONFIG_TEST - does nothing, but lets server check if player is still connected
+	 */
 	@Override
 	public void run() {
 		try {

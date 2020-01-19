@@ -3,6 +3,9 @@ package com.gdx.dungeon.sprites;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 
+/**
+ * Has information about monster, inherits animation
+ */
 public class Monster extends Animation {
 
 	float x;
@@ -17,6 +20,9 @@ public class Monster extends Animation {
 		this.setScale(2.35f);
 	}
 
+	/**
+	 * Draws current frame
+	 */
 	public void draw(Batch batch) {
 		//System.out.println(frames.size);
 		if (frames.size != 0) {

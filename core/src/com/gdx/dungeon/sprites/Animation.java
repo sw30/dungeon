@@ -17,7 +17,11 @@ public class Animation {
 	int frameHeight;
 	float currentFrameTime = 0;
 
-
+	/**
+	 * @param texture
+	 * @param frameCount - amount of frames in the texture
+	 * @param cycleTime - how long frame shall remain on screen
+	 */
 	public Animation(Texture texture, int frameCount, float cycleTime){
 		this.frameCount = frameCount;
 		TextureRegion region = new TextureRegion(texture);
@@ -33,6 +37,10 @@ public class Animation {
 
 	}
 
+	/**
+	 * Changes animation frame if frame cycle is over
+	 * @param dt - deltatime
+	 */
 	public void update(float dt){
 		currentFrameTime += dt;
 		if (currentFrameTime > maxFrameTime){
@@ -44,12 +52,19 @@ public class Animation {
 
 	}
 
-
+	/**
+	 * Sets scale for animation
+	 * @param scale
+	 */
 	public void setScale(float scale){
 		scaleX = scale;
 		scaleY = scale;
 	}
 
+	/**
+	 * returns current frame of animation
+	 * @return - current frame of animation
+	 */
 	public int getFrame() {
 		return frame;
 	}

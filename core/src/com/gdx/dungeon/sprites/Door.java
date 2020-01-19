@@ -7,6 +7,10 @@ public class Door extends Sprite {
 
 	boolean areOpen;
 
+	/**
+	 * Creates door with a texture, which are closed on default
+	 * @param texture - doors texture
+	 */
 	public Door(Texture texture) {
 		super(texture);
 		areOpen = false;

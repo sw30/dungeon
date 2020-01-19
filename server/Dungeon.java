@@ -2,6 +2,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Dungeon represents a room of a dungeon in a server's room
+ */
 public class Dungeon {
 	int ID;
 	List<Monster> monsters = new ArrayList<Monster>();
@@ -18,6 +21,10 @@ public class Dungeon {
 		direction[3] = DOWN;
 	}
 
+
+	/**
+	 * Spawns randomly chosen set of available monsters: a fly, a goblin or a slime
+	 */
 	public void spawnRandomMonsters() {
 		Random r = new Random();
 		int dice = r.nextInt(5);
@@ -45,12 +52,20 @@ public class Dungeon {
 		wasEmpty = false;
 	}
 
+	/**
+	 *
+	 * @return true if monsters are killed and false if there are still alive monsters
+	 */
 	public boolean areMonstersKilled() {
 		if (monsters.size() == 0)
 			return true;
 		return false;
 	}
 
+	/**
+	 *
+	 * @return true if there are any spots where doors could be placed
+	 */
 	public boolean areAvailableDoors() {
 		for (int i = 0; i < 4; ++i)
 			if (direction[i] == -1)

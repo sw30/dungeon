@@ -1,5 +1,9 @@
 import java.io.IOException;
 
+
+/**
+ * A class that represents monsters: bot which player is supposed to fight with
+ */
 public class Monster {
 	public double x;
 	public double y;
@@ -10,6 +14,15 @@ public class Monster {
 	public long coolDown = -1001;
 	double m = 20.0;
 
+
+	/**
+	 *
+	 * @param id - ID for a monster, should be unique for each monster in a Dungeon
+	 * @param x - monster's x on map
+	 * @param y - monster's y on map
+	 * @param type - Monster's type: FLY, GOBLIN or SLIME
+	 * @throws IOException - thrown if passed wrong monster's type
+	 */
 	public Monster(int id, int x, int y, String type) throws IOException {
 		this.x = x;
 		this.y = y;
@@ -27,6 +40,12 @@ public class Monster {
 		} else throw new IOException("Illegal monster type");
 	}
 
+
+	/**
+	 * If player can be attacked - attacks them
+	 * @param player - player to be attacked
+	 * @return true if attacked successfully or false if not
+	 */
 	public boolean beAttacked(PlayerData player) {
 		if (coolDown + 1000 < System.currentTimeMillis()) {
 			coolDown = System.currentTimeMillis();
@@ -39,6 +58,11 @@ public class Monster {
 		return false;
 	}
 
+
+	/**
+	 * Moves monster in player's direction
+	 * @param player - player to be followed
+	 */
 	void move(PlayerData player) throws IOException {
 		if (player.x + m > x && player.x - m > x)
 			x += velocity;
@@ -51,6 +75,10 @@ public class Monster {
 		attack(player);
 	}
 
+	/**
+	 * Checks if player is can be attacked. If so, attacks him
+	 * @param player - player to be attacked
+	 */
 	void attack(PlayerData player) throws IOException {
 		if (player.x - 25 < x && x < player.x + 30) {
 			if (player.y - 10 < y && y < player.y + 20) {

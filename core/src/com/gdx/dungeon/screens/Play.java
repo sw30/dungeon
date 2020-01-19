@@ -40,6 +40,10 @@ public class Play implements Screen {
 	public List<Attack> attackList = new CopyOnWriteArrayList<Attack>();
 	public List<Monster> monsterList = new CopyOnWriteArrayList<Monster>();
 
+	/**
+	 * Basically creates a little complex view for a client
+	 * @param info - DungeonClient instance
+	 */
 	public Play(DungeonClient info) {
 		client = info;
 		batch = new SpriteBatch();
@@ -65,12 +69,18 @@ public class Play implements Screen {
 	}
 
 
+	/**
+	 * Hides map
+	 */
 	public void hideMap() {
 		if (map != null) {
 			renderer = new OrthogonalTiledMapRenderer(map, 0);
 		}
 	}
 
+	/**
+	 * Displays map. This method is supposed to be called if map is hidden
+	 */
 	public void unhideMap() {
 		if (map != null) {
 			renderer = new OrthogonalTiledMapRenderer(map, 2.35f);
@@ -85,6 +95,9 @@ public class Play implements Screen {
 		camera.update();
 	}
 
+	/**
+	 * Loads tilemap
+	 */
 	public void loadMap() {
 		if (map == null) {
 			TmxMapLoader loader = new TmxMapLoader();
@@ -92,11 +105,19 @@ public class Play implements Screen {
 		}
 	}
 
+	/**
+	 * Displays text in the center of the screen
+	 * @param text - string to be shown on screen
+	 */
 	public void displayCenterText(String text) {
 		font.draw(batch, text, 230, 250);
 	}
 
 
+	/**
+	 * renders every scene
+	 * @param delta
+	 */
 	@Override
 	public void render(float delta) {
 		Gdx.gl.glClearColor(0, 0, 0, 1);
@@ -184,6 +205,10 @@ public class Play implements Screen {
 		renderer.dispose();
 	}
 
+	/**
+	 * Checks which buttons are pressed: arrows or WSAD
+	 * @param dt - deltatime; time between calling render() function
+	 */
 	public void handleInput(float dt) {
 		if (client.player != null) {
 			if (Gdx.input.isKeyPressed(Input.Keys.A)) {
@@ -228,6 +253,10 @@ public class Play implements Screen {
 	}
 
 
+	/**
+	 * Sends server information where player moved many times in one second
+	 * @param dt - deltatime, time between two render() function calls
+	 */
 	public void updateServer(float dt) {
 		timer += dt;
 		if (timer >= UPDATE_TIME && client.player != null) {

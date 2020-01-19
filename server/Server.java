@@ -46,7 +46,7 @@ public class Server extends Thread {
 
 	/**
 	 * Method with never ending loop, which purpose is to accept clients.
-	 * Accepted client is added to a queue
+	 * Accepted client is added to a list and is waiting till the server will find his opponent and create room for them.
 	 */
 	public void server() {
 		try {
@@ -76,6 +76,9 @@ public class Server extends Thread {
 		}	
 	}
 
+	/**
+	 *  Thread keeps on finding a pair to the player to let them start the game
+	 */
 	@Override
 	public void run()  {
 		while (true) {
@@ -112,6 +115,10 @@ public class Server extends Thread {
 	}
 
 
+	/**
+	 * Sends a message to every player available
+	 * @param s - Message to be sent
+	 */
 	synchronized public void broadcast(String s) {
 		DataOutputStream dataOut = null;
 		List <PlayerData> toRemove = new ArrayList <PlayerData>();
@@ -134,6 +141,11 @@ public class Server extends Thread {
 	}
 
 
+	/**
+	 * Searches for player with ID given as argument
+	 * @param ID - player to be find
+	 * @return - player's PlayerData if player is found and null if not
+	 */
 	public PlayerData getPlayerByID(String ID) {
 		for (PlayerData player : players) {
 			if (player.socketID == ID)
@@ -153,12 +165,23 @@ class ClientHandler extends Thread {
 	double wallRightX = 578.09235;
 	double wallDownY = 29.297974;
 
+	/**
+	 * Sets information about player
+	 * @param player - Information about client's hero
+	 * @param server - Server that handler hands
+	 */
 
 	ClientHandler(PlayerData player, Server server) throws IOException {
 		this.player = player;
 		this.server = server;
 	}
 
+
+	/**
+	 * Validates if player x isn't outside the room
+	 * @param x Place on X-axis where player is trying to move
+	 * @return Returns x if validated correctly or wall's x
+	 */
 	double validateX(double x) {
 		if (x < wallLeftX)
 			return wallLeftX;
@@ -167,6 +190,12 @@ class ClientHandler extends Thread {
 		return x;
 	}
 
+
+	/**
+	 * Validates if player y isn't outside the room
+	 * @param y Place on Y-axis where player is trying to move
+	 * @return Returns y if validated correctly or wall's y
+	 */
 	double validateY(double y) {
 		if (y < wallDownY)
 			return wallDownY;
@@ -175,6 +204,14 @@ class ClientHandler extends Thread {
 		return y;
 	}
 
+
+	/**
+	 * Checks if player should be teleported to a different room. Doesn't check if doors are open
+	 * @param x - player's x
+	 * @param y - player's y
+	 * @param dungeon - Dungeon's room where the player is
+	 * @return dungeon's room ID where player is supposed to go or -1 on fail
+	 */
 	int isPlayerInDoors(double x, double y, Dungeon dungeon) {
 		if (x > 289 && x < 310) {
 			if (y < wallDownY + 3.0 && dungeon.direction[3] != -1)
@@ -190,6 +227,16 @@ class ClientHandler extends Thread {
 		return -1;
 	}
 
+
+	/**
+	 * Thread that handles the whole game for a single client
+	 * Reacts on such commands as:
+	 * CONNECT - If player is in room, lets him to begin the game
+	 * PLAYERMOVED - Decides if player should move or not
+	 * UPDATE - Sends player every information he needs to render the scene
+	 * ATTACK - Checks if player can attack; if so - will decrease opponent's health. Sends information about drawing attack too
+	 *
+	 */
 	@Override
 	public void run()  {
 		while (!player.hasLost) {
@@ -305,7 +352,7 @@ class ClientHandler extends Thread {
 										player.clientOutput.writeUTF("LEVEL_UP " + player.level);
 									}
 									Random r = new Random();
-									String rewards[] = {"Small shield", "Medium shield", "Great shield", "Helmet pilow", "Better armor", "Magic book", "Spear", "Sharp sword"};
+									String rewards[] = {"Small shield", "Medium shield", "Great shield", "Helmet pillow", "Better armor", "Magic book", "Spear", "Sharp sword"};
 									String descriptions[] = {"+1 shield", "+3 shield", "+5 shield", "HP UP", "HP UP", "High range", "Medium range", "Temporary DMG UP, small range"}; 
 									int randomValue = r.nextInt(rewards.length);
 									if (randomValue == 0) 		player.shield++;

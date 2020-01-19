@@ -6,7 +6,10 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 
-
+/**
+ * A class containing every local information about hero and his animations
+ * See Animation documentation for details
+ */
 public class Hero {
 
 	public double health = 6.0;
@@ -30,6 +33,11 @@ public class Hero {
 	public Texture hitHeroTexture;
 	public Texture texture;
 
+	/**
+	 * @param texture - hero's default spritesheet
+	 * @param attackTexture - attack's texture
+	 * @param hitHeroTexture - hero's spritesheet shown while hero is being hit
+	 */
 	public Hero(Texture texture, Texture attackTexture, Texture hitHeroTexture) {
 		this.attackTexture = attackTexture;
 		this.hitHeroTexture = hitHeroTexture;
@@ -48,6 +56,10 @@ public class Hero {
 		attackSprite = new Sprite(this.attackTexture);
 	}
 
+	/**
+	 * changes current texture to another
+	 * @param otherTexture - texture to be changed to
+	 */
 	public void changeTexture(Texture otherTexture) {
 		frames.clear();
 		TextureRegion region = new TextureRegion(otherTexture);
@@ -58,6 +70,9 @@ public class Hero {
 		}
 	}
 
+	/**
+	 * Sets hero position
+	 */
 	public void setPosition(float x, float y) {
 		this.x = x;
 		this.y = y;
@@ -71,17 +86,28 @@ public class Hero {
 		return y;
 	}
 
+	/**
+	 * Checks if hero has moved
+	 * @param newX - place hero wants to move on X-axis
+	 * @param newY - place hero wants to move on Y-axis
+	 * @return
+	 */
 	public boolean didHeroMove(float newX, float newY) {
 		if (newX == this.getX() && newY == this.getY())
 			return false;
 		return true;
 	}
 
+
 	public void setScale(float scale){
 		scaleX = scale;
 		scaleY = scale;
 	}
 
+	/**
+	 * draws current frame
+	 * @param batch
+	 */
 	public void draw(Batch batch) {
 		if (frames.size != 0) {
 			frame = frame % frames.size;
